@@ -1,0 +1,5 @@
+{
+  "name": "SMPN 3 Pacet Scheduler",
+  "description": "Automated schedule generator for SMPN 3 Pacet (2025/2026 Semester 2) handling teacher constraints, class loads, and specific time slots.",
+  "requestFramePermissions": []
+}
