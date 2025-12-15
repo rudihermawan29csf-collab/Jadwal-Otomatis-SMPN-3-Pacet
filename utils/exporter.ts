@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx-js-style';
-import { WeeklySchedule, CLASSES, Teacher } from '../types';
+import { WeeklySchedule, CLASSES, Teacher, ClassName } from '../types';
 import { TIME_STRUCTURE } from '../data';
 
 // --- HELPERS ---
@@ -429,7 +429,7 @@ const prepareGridData = (schedule: WeeklySchedule, filter: 'CLASS' | 'TEACHER', 
             const cell = dayData?.[p];
             
             if (filter === 'CLASS') {
-                const classCell = cell?.[target as any];
+                const classCell = cell?.[target as ClassName];
                 if (!classCell || classCell.type === 'EMPTY') {
                     row.push('');
                 } else if (classCell.type === 'BLOCKED') {
@@ -488,7 +488,7 @@ const prepareLegendData = (schedule: WeeklySchedule, filter: 'CLASS' | 'TEACHER'
              if (!cell) return;
 
              if (filter === 'CLASS') {
-                 const c = cell[targetId as any];
+                 const c = cell[targetId as ClassName];
                  if (c && c.type === 'CLASS') {
                       const key = `${c.teacherId}-${c.subjectCode}`;
                       if (!dataMap.has(key)) {
