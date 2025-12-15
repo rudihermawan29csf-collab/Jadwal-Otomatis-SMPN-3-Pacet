@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { WeeklySchedule, CLASSES, Teacher } from '../types';
 import { TIME_STRUCTURE } from '../data';
 
