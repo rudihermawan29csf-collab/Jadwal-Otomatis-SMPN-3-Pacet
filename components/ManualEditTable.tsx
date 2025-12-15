@@ -400,11 +400,11 @@ export const ManualEditTable: React.FC<Props> = ({ schedule, setSchedule, teache
       <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-sm text-yellow-800">
           <p className="font-bold">Mode Edit Manual</p>
           <ul className="list-disc pl-5 mt-1 space-y-1">
-              <li>Pilihan mapel dibatasi oleh Sisa jam total > 0.</li>
+              <li>Pilihan mapel dibatasi oleh Sisa jam total &gt; 0.</li>
               <li><b>Strict Mode:</b> Anda <span className="text-red-600 font-bold">tidak bisa</span> memilih mapel jika jatah JP hari ini sudah penuh (sesuai setting Pembagian JP).</li>
               <li>
                   <b>Indikator Bentrok:</b> <span className="bg-red-200 border border-red-500 text-red-800 px-1 font-bold">MERAH</span> pada tabel menandakan:
-                  <ul className="list-square pl-5 text-xs text-yellow-900 mt-1">
+                  <ul className="list-disc pl-5 text-xs text-yellow-900 mt-1">
                     <li>Guru mengajar 2 kelas di jam yang sama (Bentrok Waktu).</li>
                     <li>Guru mengajar mapel berbeda di kelas yang sama pada hari yang sama.</li>
                     <li>Total jam mapel per hari melebihi batas (misal: 4 JP dalam sehari padahal aturan 2+2).</li>
