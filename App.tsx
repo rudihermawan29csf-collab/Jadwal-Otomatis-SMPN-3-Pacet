@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { generateSchedule, createEmptySchedule, fillScheduleWithCode } from './scheduler';
-import { WeeklySchedule, CLASSES, OffDayConstraints, Teacher, JPSplitConstraints, SplitOption, ScheduleCell, Tab, AdditionalTask, SKDocument, SchoolConfig, DutyDocument, DecisionDocument, WalasDocument, EkskulDocument, MGMPDocument } from './types';
+import { WeeklySchedule, CLASSES, OffDayConstraints, Teacher, JPSplitConstraints, SplitOption, ScheduleCell, Tab, AdditionalTask, SKDocument, SchoolConfig, DutyDocument, DecisionDocument, WalasDocument, EkskulDocument, MGMPDocument, TASDocument } from './types';
 import { INITIAL_TEACHERS, INITIAL_ADDITIONAL_TASKS } from './data';
 import { ScheduleTable } from './components/ScheduleTable';
 import { TeacherDutyTable } from './components/TeacherDutyTable';
@@ -34,7 +34,7 @@ const App: React.FC = () => {
           id: '1',
           label: 'Data Guru Utama',
           academicYear: '2025/2026',
-          semester: 'SEMESTER 2',
+          semester: 'Semester 2',
           docDate: '11 Agustus 2025',
           teachers: getInitialTeachers(),
           schedule: createEmptySchedule()
@@ -67,7 +67,7 @@ const App: React.FC = () => {
           label: 'SK Utama',
           skNumberCode: '1700',
           skDateRaw: '2025-08-11',
-          semester: 'SEMESTER 1',
+          semester: 'Semester 2',
           academicYear: '2025/2026',
           tasks: getInitialAdditionalTasks()
       }
@@ -79,7 +79,7 @@ const App: React.FC = () => {
         label: 'SK PBM Utama',
         skNumberCode: '1481.1',
         skDateRaw: '2025-07-14',
-        semester: 'SEMESTER 1',
+        semester: 'Semester 2',
         academicYear: '2025/2026'
     }
   ]);
@@ -90,7 +90,7 @@ const App: React.FC = () => {
           label: 'SK Walas Utama',
           skNumberCode: '1700',
           skDateRaw: '2025-12-27',
-          semester: 'SEMESTER 1',
+          semester: 'Semester 2',
           academicYear: '2025/2026',
           entries: []
       }
@@ -102,7 +102,7 @@ const App: React.FC = () => {
           label: 'SK Ekskul Utama',
           skNumberCode: '1700',
           skDateRaw: '2025-12-27',
-          semester: 'SEMESTER 1',
+          semester: 'Semester 2',
           academicYear: '2025/2026',
           entries: []
       }
@@ -114,7 +114,7 @@ const App: React.FC = () => {
           label: 'SK MGMP Utama',
           skNumberCode: '1569.1',
           skDateRaw: '2025-08-11',
-          semester: 'SEMESTER 1',
+          semester: 'Semester 2',
           academicYear: '2025/2026',
           entries: INITIAL_ADDITIONAL_TASKS.map((t, idx) => ({
               id: String(idx),
@@ -124,6 +124,26 @@ const App: React.FC = () => {
               job: t.job,
               subject: '-'
           }))
+      }
+  ]);
+
+  const [tasDocuments, setTasDocuments] = useState<TASDocument[]>([
+      {
+          id: '1',
+          label: 'SK TAS Utama',
+          skNumberCode: '1569.1',
+          skDateRaw: '2025-08-11',
+          academicYear: '2025/2026',
+          entries: [
+            {
+                id: '1',
+                name: "Imam Safi'i",
+                nip: '-',
+                jabatan: 'PTT',
+                tasks: '1. Koordinator Tenaga Administrasi Sekolah\n2. Pelaksana Urusan Administrasi Kepegawaian\n3. Proktor Kegiatan Evaluasi dan Penilaian\n4. Operator PPDB\n5. Operator Dapodik\n6 Urusan Mutasi Peserta Didik',
+                details: '1.1. Struktur Organisasi Sekolah\n2.1. File Guru dan Karyawan\n2.2. Papan Data ketenagaan\n3.1. Pelaksana Asesmen Kompetensi Minimum\n3.2. Kegiatan Evaluasi dan Penilaian lainnya\n4. Melaksanakan kegiatan PPDB (Online) mulai dari awal\n5.2. Pelaksana Dapodik\n5.2. Pelaksana E Rapor\n5.3. Pembuat Nomor Induk Siswa\n6.1. Penyelesaian Mutasi Siswa\n6.2. Buku Klaper'
+            }
+          ]
       }
   ]);
   
@@ -168,7 +188,7 @@ const App: React.FC = () => {
                     id: '1',
                     label: 'Data Guru Utama',
                     academicYear: '2025/2026',
-                    semester: 'SEMESTER 2',
+                    semester: 'Semester 2',
                     docDate: '11 Agustus 2025',
                     teachers: parsed.teachers,
                     schedule: parsed.schedule || createEmptySchedule()
@@ -183,7 +203,7 @@ const App: React.FC = () => {
                     id: '1',
                     label: 'Data Guru Utama',
                     academicYear: '2025/2026',
-                    semester: 'SEMESTER 2',
+                    semester: 'Semester 2',
                     docDate: '11 Agustus 2025',
                     teachers: getInitialTeachers(),
                     schedule: createEmptySchedule()
@@ -199,6 +219,7 @@ const App: React.FC = () => {
             if (parsed.walasDocuments) setWalasDocuments(parsed.walasDocuments);
             if (parsed.ekskulDocuments) setEkskulDocuments(parsed.ekskulDocuments);
             if (parsed.mgmpDocuments) setMgmpDocuments(parsed.mgmpDocuments);
+            if (parsed.tasDocuments) setTasDocuments(parsed.tasDocuments);
             if (parsed.schoolConfig) setSchoolConfig(parsed.schoolConfig);
             if (parsed.offConstraints) setOffConstraints(parsed.offConstraints);
             if (parsed.jpSplitSettings) setJpSplitSettings(parsed.jpSplitSettings);
@@ -226,6 +247,7 @@ const App: React.FC = () => {
           walasDocuments,
           ekskulDocuments,
           mgmpDocuments,
+          tasDocuments,
           schoolConfig,
           offConstraints,
           jpSplitSettings,
@@ -434,7 +456,7 @@ const App: React.FC = () => {
         {activeTab === 'SK_WALAS' && <WalasLetter documents={walasDocuments} setDocuments={setWalasDocuments} teachers={teachers} schoolConfig={schoolConfig} dutyDocuments={dutyDocuments} activeDutyDocId={activeDutyDocId} onSwitchDutyDoc={handleSwitchDoc} />}
         {activeTab === 'SK_EKSKUL' && <EkskulLetter documents={ekskulDocuments} setDocuments={setEkskulDocuments} teachers={teachers} schoolConfig={schoolConfig} dutyDocuments={dutyDocuments} activeDutyDocId={activeDutyDocId} onSwitchDutyDoc={handleSwitchDoc} />}
         {activeTab === 'SK_MGMP' && <MGMPLetter documents={mgmpDocuments} setDocuments={setMgmpDocuments} teachers={teachers} schoolConfig={schoolConfig} dutyDocuments={dutyDocuments} activeDutyDocId={activeDutyDocId} onSwitchDutyDoc={handleSwitchDoc} />}
-        {activeTab === 'SK_TAS_TASK' && <TASAdditionalTaskLetter schoolConfig={schoolConfig} />}
+        {activeTab === 'SK_TAS_TASK' && <TASAdditionalTaskLetter documents={tasDocuments} setDocuments={setTasDocuments} schoolConfig={schoolConfig} />}
         {activeTab === 'OFF_CODES' && <OffCodeManager teachers={teachers} constraints={offConstraints} onChange={setOffConstraints} documents={dutyDocuments} activeDocId={activeDutyDocId} setActiveDocId={handleSwitchDoc} />}
         {activeTab === 'JP_DIST' && <JPDistributionTable settings={jpSplitSettings} onUpdate={handleSplitUpdate} teachers={teachers} documents={dutyDocuments} activeDocId={activeDutyDocId} setActiveDocId={handleSwitchDoc} />}
         {activeTab === 'SETTINGS' && <Settings config={schoolConfig} onSave={setSchoolConfig} />}

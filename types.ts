@@ -53,6 +53,16 @@ export interface AdditionalTask {
     tasks: string;
 }
 
+// Data structure for SK TAS (Lampiran 2a)
+export interface TASEntry {
+    id: string;
+    name: string;
+    nip: string;
+    jabatan: string;
+    tasks: string;
+    details: string;
+}
+
 // Data structure for SK Walas (Lampiran 5)
 export interface WalasEntry {
     id: string;
@@ -92,6 +102,16 @@ export interface SKDocument {
     semester: string; // e.g. "SEMESTER 1"
     academicYear: string; // e.g. "2025/2026"
     tasks: AdditionalTask[];
+}
+
+// Interface for TAS Document
+export interface TASDocument {
+    id: string;
+    label: string;
+    skNumberCode: string;
+    skDateRaw: string;
+    academicYear: string;
+    entries: TASEntry[];
 }
 
 // Interface for Walas Document
