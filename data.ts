@@ -1,4 +1,5 @@
-import { DaySchedule, Teacher } from './types';
+
+import { DaySchedule, Teacher, AdditionalTask } from './types';
 
 // Define the time structure for each day
 export const TIME_STRUCTURE: DaySchedule[] = [
@@ -295,4 +296,21 @@ export const INITIAL_TEACHERS: Teacher[] = [
       { id: '17-2', subject: 'Informatika', code: 'INF', color: 'bg-cyan-200', load: { 'IX B': 3, 'IX C': 3 } }
     ]
   }
+];
+
+export const INITIAL_ADDITIONAL_TASKS: AdditionalTask[] = [
+    { id: '1', name: 'Didik Sulistyo, M.M.Pd.', nip: '196605181989011002', rank: 'Pembina Utama Muda / IV c', job: 'Guru Ahli Madya', tasks: 'Kepala SMPN 3 Pacet' },
+    { id: '2', name: 'Dra. Sri Hayati', nip: '19670628 200801 2 006', rank: 'Penata Tk. I / III d', job: 'Guru Muda', tasks: '1. Wali Kelas IX-B\n2. Bendahara Insidental' },
+    { id: '3', name: 'Bakhtiar Rifai, SE', nip: '19800304 200801 1 009', rank: 'Penata Tk. I / III d', job: 'Guru Muda', tasks: '1. Operator BOS\n2. Kepala Laboratorium\n3. Bendahara Barang' },
+    { id: '4', name: 'Moch. Husain Rifai Hamzah, S.Pd.', nip: '19920316 202012 1 011', rank: 'Penata Muda / III b', job: 'Guru Pertama', tasks: "1. Urusan Humas\n2. Wali Kelas IX-A" },
+    { id: '5', name: 'Rudi Hermawan, S.Pd.I', nip: '19891029 202012 1 003', rank: 'Penata Muda / III a', job: 'Guru Pertama', tasks: 'Urusan Akademik' },
+    { id: '6', name: 'Okha Devi Anggraini, S.Pd.', nip: '19941002 202012 2 008', rank: 'Penata Muda / III a', job: 'Guru Pertama', tasks: '1. Bendahara BOS\n2. Wali Kelas VII-C' },
+    { id: '7', name: 'Eka Hariyati, S. Pd.', nip: '19731129 202421 2 003', rank: 'Ahli Pertama / IX', job: 'Guru', tasks: '1. Pembina OSIS\n2. Wali Kelas VIII-B' },
+    { id: '8', name: 'Mikoe Wahyudi Putra, ST., S. Pd.', nip: '19820222 202421 1 004', rank: 'Ahli Pertama / IX', job: 'Guru', tasks: 'Wakil Kepala Sekolah Urusan Kesiswaan' },
+    { id: '9', name: 'Purnadi, S. Pd.', nip: '19680705 202421 1 001', rank: 'Ahli Pertama / IX', job: 'Guru', tasks: '1. Urusan Sarana Prasarana\n2. Wali Kelas IX-C' },
+    { id: '10', name: 'Israfin Maria Ulfa, S.Pd', nip: '198501312025212004', rank: 'Ahli Pertama / IX', job: 'Guru', tasks: '1. Pembina Koperasi Siswa\n2. Wali Kelas VII-A' },
+    { id: '11', name: 'Retno Nawangwulan, S. Pd.', nip: '-', rank: 'Ahli Pertama / IX', job: 'Guru', tasks: '1. Kepegawaian dan Koordinator PKB\n2. Bendahara Gaji\n3. Wali Kelas VIII-C' },
+    { id: '12', name: 'Syadam Budi Satrianto, S.Pd', nip: '-', rank: 'GTT', job: 'Guru', tasks: 'Wali Kelas VIII-A' },
+    { id: '13', name: 'Rebby Dwi Prataopu, S.Si', nip: '-', rank: 'GTT', job: 'Guru', tasks: 'Wali Kelas VII-B' },
+    { id: '14', name: 'Akhmad Hariadi, S.Pd', nip: '19751108 200901 1 001', rank: 'Penata Muda Tk I / III b', job: 'Guru', tasks: 'Kepala Perpustakaan' }
 ];

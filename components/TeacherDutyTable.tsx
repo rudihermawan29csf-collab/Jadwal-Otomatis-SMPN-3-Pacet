@@ -1,14 +1,31 @@
+
 import React, { useState } from 'react';
-import { Teacher, WeeklySchedule, CLASSES, ClassName, SubjectLoad } from '../types';
+import { Teacher, WeeklySchedule, CLASSES, ClassName, SubjectLoad, DutyDocument } from '../types';
+import { createEmptySchedule } from '../scheduler';
+import { exportDutiesExcel, exportDutiesPDF, exportDutiesWord } from '../utils/exporter';
 
 interface Props {
   teachers: Teacher[];
   setTeachers?: (teachers: Teacher[]) => void;
   schedule: WeeklySchedule | null;
   mode?: 'static' | 'countdown';
+  // New props for document management
+  documents?: DutyDocument[];
+  setDocuments?: React.Dispatch<React.SetStateAction<DutyDocument[]>>;
+  activeDocId?: string;
+  setActiveDocId?: (id: string) => void;
 }
 
-export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, schedule, mode = 'static' }) => {
+export const TeacherDutyTable: React.FC<Props> = ({ 
+    teachers, 
+    setTeachers, 
+    schedule, 
+    mode = 'static',
+    documents,
+    setDocuments,
+    activeDocId,
+    setActiveDocId
+}) => {
   const [editId, setEditId] = useState<string | null>(null); // "teacherId|subjectId"
   const [editForm, setEditForm] = useState<Partial<Teacher & { subjectData: SubjectLoad }>>({});
   const [isAdding, setIsAdding] = useState(false);
@@ -22,8 +39,93 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
   });
 
   const isCountdown = mode === 'countdown';
+  const showDocManager = !isCountdown && documents && setDocuments && activeDocId && setActiveDocId;
 
-  // Calculate remaining hours
+  // Active Document Helper
+  const activeDoc = documents?.find(d => d.id === activeDocId);
+
+  // --- Document Management Handlers ---
+
+  const handleUpdateDoc = (updates: Partial<DutyDocument>) => {
+      if (!setDocuments || !activeDocId) return;
+      setDocuments(prev => prev.map(d => d.id === activeDocId ? { ...d, ...updates } : d));
+  };
+
+  const handleCreateDoc = () => {
+      if (!setDocuments || !documents) return;
+      const newId = Date.now().toString();
+      const newDoc: DutyDocument = {
+          id: newId,
+          label: `Data Baru ${documents.length + 1}`,
+          academicYear: '2025/2026',
+          semester: 'SEMESTER 2',
+          docDate: new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}),
+          teachers: [],
+          schedule: createEmptySchedule() // Initialize with empty schedule
+      };
+      setDocuments([...documents, newDoc]);
+      setActiveDocId && setActiveDocId(newId);
+  };
+
+  const handleDuplicateDoc = () => {
+      if (!setDocuments || !documents || !activeDoc) return;
+      const newId = Date.now().toString();
+      
+      // Deep Copy Teachers
+      const teachersCopy = JSON.parse(JSON.stringify(activeDoc.teachers));
+      // Deep Copy Schedule
+      const scheduleCopy = JSON.parse(JSON.stringify(activeDoc.schedule || createEmptySchedule()));
+
+      const newDoc: DutyDocument = {
+          ...activeDoc,
+          id: newId,
+          label: `${activeDoc.label} (Salinan)`,
+          teachers: teachersCopy,
+          schedule: scheduleCopy
+      };
+      setDocuments([...documents, newDoc]);
+      setActiveDocId && setActiveDocId(newId);
+      alert(`Berhasil menduplikasi "${activeDoc.label}" beserta jadwalnya.`);
+  };
+
+  const handleDeleteDoc = () => {
+      if (!setDocuments || !documents || !activeDocId || !setActiveDocId) return;
+      
+      if (documents.length <= 1) {
+          alert('Tidak dapat menghapus dokumen terakhir. Minimal harus tersisa satu data.');
+          return;
+      }
+      
+      if (confirm(`Yakin ingin menghapus dokumen "${activeDoc?.label}"?\n\nPERINGATAN: Data yang dihapus tidak dapat dikembalikan.`)) {
+          // 1. Determine the index of the document being deleted
+          const currentIndex = documents.findIndex(d => d.id === activeDocId);
+          
+          // 2. Filter out the deleted document
+          const newDocs = documents.filter(d => d.id !== activeDocId);
+          
+          // 3. Determine the new active ID
+          // Try to keep the same index, or go to the previous one if we deleted the last item
+          let nextIndex = 0;
+          if (newDocs.length > 0) {
+              if (currentIndex < newDocs.length) {
+                  nextIndex = currentIndex; // Take the item that slid into this slot
+              } else {
+                  nextIndex = newDocs.length - 1; // Take the last item
+              }
+          }
+          const nextId = newDocs[nextIndex].id;
+
+          // 4. Update the selection FIRST (so App loads the data from the remaining list)
+          // Note: App's handleSwitchDoc looks at existing state, so we pick an ID that exists in both old and new lists (the survivor)
+          setActiveDocId(nextId);
+
+          // 5. Update the list state
+          setDocuments(newDocs);
+      }
+  };
+
+  // --- Calculation Helpers ---
+
   const calculateRemaining = (teacherCode: string, subjectCode: string, cls: ClassName, initialLoad: number) => {
     if (!schedule || mode === 'static') return initialLoad;
     let scheduledCount = 0;
@@ -36,6 +138,10 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
         });
     });
     return initialLoad - scheduledCount;
+  };
+
+  const calculateTotalLoad = (sub: SubjectLoad) => {
+      return Object.values(sub.load).reduce((a, b) => (a || 0) + (b || 0), 0);
   };
 
   // --- Actions ---
@@ -55,7 +161,6 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
   };
 
   const startEdit = (t: Teacher, s: SubjectLoad) => {
-      // Use pipe separator to avoid conflict with hyphens in Subject IDs
       setEditId(`${t.id}|${s.id}`);
       setEditForm({
           ...t,
@@ -76,7 +181,6 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
       
       const updated = teachers.map(t => {
           if (t.id === tId) {
-              // Update teacher info
               const newSubjects = t.subjects.map(s => {
                   if (s.id === sIdStr) {
                       return editForm.subjectData as SubjectLoad;
@@ -105,7 +209,6 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
 
   const saveNew = () => {
       if (!setTeachers) return;
-      // Simple validation
       if (!newTeacher.name || !newSubject.subject) {
           alert("Nama dan Mapel harus diisi");
           return;
@@ -134,11 +237,20 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
 
       setTeachers([...teachers, fullTeacher]);
       setIsAdding(false);
-      // Reset form
       setNewTeacher({ name: '', nip: '-', rank: '-', group: '-', code: '', additionalTask: '-', additionalHours: 0 });
       setNewSubject({ subject: '', code: '', color: 'bg-gray-200', load: {} });
   };
 
+  const handleDownload = (type: 'EXCEL' | 'PDF' | 'WORD') => {
+      if (!activeDoc) return;
+      if (type === 'EXCEL') {
+          exportDutiesExcel(teachers);
+      } else if (type === 'PDF') {
+          exportDutiesPDF(teachers, 'F4');
+      } else if (type === 'WORD') {
+          exportDutiesWord(teachers, activeDoc.semester, activeDoc.academicYear, activeDoc.docDate);
+      }
+  }
 
   // --- Render Helpers ---
 
@@ -160,18 +272,13 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
               <td colSpan={100} className="p-4">
                   <h4 className="font-bold text-blue-700 mb-2 uppercase text-xs">Edit Data Guru</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
-                      {/* Identity */}
                       <div><label className="text-xs font-bold block mb-1">Nama Guru</label><input className="w-full border p-1 rounded" value={fd.name} onChange={e => setEditForm({...fd, name: e.target.value})} /></div>
                       <div><label className="text-xs font-bold block mb-1">NIP</label><input className="w-full border p-1 rounded" value={fd.nip} onChange={e => setEditForm({...fd, nip: e.target.value})} /></div>
                       <div><label className="text-xs font-bold block mb-1">Pangkat</label><input className="w-full border p-1 rounded" value={fd.rank} onChange={e => setEditForm({...fd, rank: e.target.value})} /></div>
                       <div><label className="text-xs font-bold block mb-1">Golongan</label><input className="w-full border p-1 rounded" value={fd.group} onChange={e => setEditForm({...fd, group: e.target.value})} /></div>
-                      
-                      {/* Subject Info */}
                       <div><label className="text-xs font-bold block mb-1">Mata Pelajaran</label><input className="w-full border p-1 rounded" value={sd.subject} onChange={e => setEditForm({...fd, subjectData: {...sd, subject: e.target.value}})} /></div>
                       <div><label className="text-xs font-bold block mb-1">Kode Mapel</label><input className="w-full border p-1 rounded" value={sd.code} onChange={e => setEditForm({...fd, subjectData: {...sd, code: e.target.value}})} /></div>
                       <div><label className="text-xs font-bold block mb-1">Kode Guru (Inisial)</label><input className="w-full border p-1 rounded" value={fd.code} onChange={e => setEditForm({...fd, code: e.target.value})} /></div>
-                      
-                      {/* Additional */}
                       <div><label className="text-xs font-bold block mb-1">Tugas Tambahan</label><input className="w-full border p-1 rounded" value={fd.additionalTask} onChange={e => setEditForm({...fd, additionalTask: e.target.value})} /></div>
                       <div><label className="text-xs font-bold block mb-1">Jam Tambahan</label><input type="number" className="w-full border p-1 rounded" value={fd.additionalHours} onChange={e => setEditForm({...fd, additionalHours: parseInt(e.target.value) || 0})} /></div>
                   </div>
@@ -205,30 +312,136 @@ export const TeacherDutyTable: React.FC<Props> = ({ teachers, setTeachers, sched
       )
   };
 
-  const calculateTotalLoad = (sub: SubjectLoad) => {
-      return Object.values(sub.load).reduce((a, b) => (a || 0) + (b || 0), 0);
-  };
-
   return (
     <div className="bg-white p-4 shadow rounded overflow-x-auto">
-      <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-xl font-bold uppercase">
-                {isCountdown ? 'Kontrol Jadwal & Sisa Jam' : 'Pembagian Tugas Guru'}
-            </h2>
-            {isCountdown && (
-                <p className="text-xs text-gray-600">
-                    <span className="text-green-600 font-bold">0 (Hijau)</span> = Selesai. <span className="text-red-600 font-bold">Merah</span> = Belum terjadwal.
-                </p>
-            )}
+      
+      {/* DOCUMENT MANAGER UI (Only in static mode) */}
+      {showDocManager && activeDoc && (
+          <>
+            <div className="bg-blue-50 p-4 rounded-t border-x border-t border-blue-200 no-print flex flex-wrap gap-2 justify-between items-center mb-0">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-bold text-blue-900">Pilih Data Guru (Set):</label>
+                    <select 
+                        value={activeDocId} 
+                        onChange={(e) => setActiveDocId && setActiveDocId(e.target.value)}
+                        className="border border-blue-300 rounded px-2 py-1 text-sm font-bold"
+                    >
+                        {documents!.map(d => (
+                            <option key={d.id} value={d.id}>{d.label}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                     <button 
+                        onClick={handleCreateDoc}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1"
+                    >
+                        + Buat Baru
+                    </button>
+                    <button 
+                        onClick={handleDuplicateDoc}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1"
+                        title="Buat salinan dari data ini"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/></svg>
+                        Duplikat
+                    </button>
+                    <button 
+                        onClick={handleDeleteDoc}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1"
+                    >
+                        Hapus
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-gray-100 p-3 mb-4 rounded-b border border-gray-300 no-print">
+                <h4 className="text-xs font-bold text-gray-600 mb-2 uppercase">Pengaturan Metadata Dokumen</h4>
+                <div className="flex gap-2 flex-wrap items-end">
+                    <div>
+                        <label className="text-[10px] block font-bold">Label Dokumen (Internal)</label>
+                        <input 
+                            className="border p-1 rounded text-sm w-48" 
+                            value={activeDoc.label} 
+                            onChange={e => handleUpdateDoc({ label: e.target.value })} 
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] block font-bold">Semester</label>
+                        <input 
+                            className="border p-1 rounded text-sm w-32" 
+                            value={activeDoc.semester} 
+                            onChange={e => handleUpdateDoc({ semester: e.target.value })} 
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] block font-bold">Tahun Pelajaran</label>
+                        <input 
+                            className="border p-1 rounded text-sm w-24" 
+                            value={activeDoc.academicYear} 
+                            onChange={e => handleUpdateDoc({ academicYear: e.target.value })} 
+                        />
+                    </div>
+                    <div>
+                        <label className="text-[10px] block font-bold">Tanggal Dokumen</label>
+                        <input 
+                            className="border p-1 rounded text-sm w-32" 
+                            value={activeDoc.docDate} 
+                            onChange={e => handleUpdateDoc({ docDate: e.target.value })} 
+                        />
+                    </div>
+                </div>
+            </div>
+          </>
+      )}
+
+      {!isCountdown && activeDoc && (
+          <div className="text-center mb-6 border-b-2 border-black pb-4 print:mb-8">
+              <h2 className="text-xl font-bold uppercase underline tracking-wider">PEMBAGIAN TUGAS GURU</h2>
+              <h3 className="text-lg font-bold uppercase mt-1">
+                  {activeDoc.semester} - TAHUN PELAJARAN {activeDoc.academicYear}
+              </h3>
+              <p className="text-sm mt-2 font-medium">Tanggal: {activeDoc.docDate}</p>
           </div>
-          {!isCountdown && setTeachers && !isAdding && (
-             <button onClick={() => setIsAdding(true)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 shadow flex items-center gap-1">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
-                 Tambah Data
-             </button>
-          )}
-      </div>
+      )}
+
+      {!isCountdown && (
+          <div className="flex flex-wrap justify-between items-center mb-4 no-print gap-4">
+              <div>
+                {setTeachers && !isAdding && (
+                    <button onClick={() => setIsAdding(true)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 shadow flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                        Tambah Guru
+                    </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                  <button onClick={() => handleDownload('EXCEL')} className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-bold shadow flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.781l2.116 2.54a.5.5 0 0 0 .768-.641L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.219l-2.116-2.54z"/><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/></svg>
+                        Excel
+                  </button>
+                  <button onClick={() => handleDownload('PDF')} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-bold shadow flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/><path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.192-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.54-.094.137-.098.286-.065.37.027.069.112.152.315.172.067.007.136-.007.202-.038.14-.065.294-.175.449-.33.167-.168.318-.363.447-.57z"/></svg>
+                        PDF
+                  </button>
+                  <button onClick={() => handleDownload('WORD')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-bold shadow flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.485 6.879l1.101-4.404L5.5 1h5l-1.086 1.475-1.101 4.404h.828l1.101-4.404L9.227 1h5l-1.086 1.475-1.101 4.404H13l1.101-4.404L13.015 1h2.485l-1.657 6.621h-2.142L10.55 3.125l-1.101 4.496H7.307L8.458 3.125l-1.101 4.496H5.485z"/></svg>
+                        Word
+                  </button>
+              </div>
+          </div>
+      )}
+
+      {isCountdown && (
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-xl font-bold uppercase">Kontrol Jadwal & Sisa Jam</h2>
+              <p className="text-xs text-gray-600">
+                  <span className="text-green-600 font-bold">0 (Hijau)</span> = Selesai. <span className="text-red-600 font-bold">Merah</span> = Belum terjadwal.
+              </p>
+            </div>
+          </div>
+      )}
 
       {isAdding && (
           <div className="mb-6 border-2 border-blue-600 p-4 bg-blue-50 rounded shadow-md animate-fade-in">

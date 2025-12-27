@@ -1,25 +1,84 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { generateSchedule, createEmptySchedule, fillScheduleWithCode } from './scheduler';
-import { WeeklySchedule, CLASSES, OffDayConstraints, Teacher, JPSplitConstraints, SplitOption, ScheduleCell } from './types';
-import { INITIAL_TEACHERS } from './data';
+import { WeeklySchedule, CLASSES, OffDayConstraints, Teacher, JPSplitConstraints, SplitOption, ScheduleCell, Tab, AdditionalTask, SKDocument, SchoolConfig, DutyDocument } from './types';
+import { INITIAL_TEACHERS, INITIAL_ADDITIONAL_TASKS } from './data';
 import { ScheduleTable } from './components/ScheduleTable';
 import { TeacherDutyTable } from './components/TeacherDutyTable';
 import { JPDistributionTable } from './components/ReferenceTabs';
 import { OffCodeManager } from './components/OffCodeManager';
 import { ManualEditTable } from './components/ManualEditTable';
 import { PerClassTeacherSchedule } from './components/PerClassTeacherSchedule';
+import { DecisionLetter } from './components/DecisionLetter';
+import { AdditionalTaskLetter } from './components/AdditionalTaskLetter';
+import { TASAdditionalTaskLetter } from './components/TASAdditionalTaskLetter';
+import { Settings } from './components/Settings';
 import { exportDutiesExcel, exportDutiesPDF, exportScheduleExcel, exportSchedulePDF } from './utils/exporter';
-
-type Tab = 'SCHEDULE' | 'EDIT_MANUAL' | 'DUTIES' | 'OFF_CODES' | 'JP_DIST' | 'PER_CLASS_TEACHER';
 
 const STORAGE_KEY = 'SMPN3_PACET_DATA_V1';
 
 const App: React.FC = () => {
   // Use function to deep copy INITIAL_TEACHERS to prevent mutation of the source constant
   const getInitialTeachers = () => JSON.parse(JSON.stringify(INITIAL_TEACHERS));
+  const getInitialAdditionalTasks = () => JSON.parse(JSON.stringify(INITIAL_ADDITIONAL_TASKS));
 
+  // Initialize schedule (will be synced with activeDoc)
   const [schedule, setSchedule] = useState<WeeklySchedule | null>(null);
-  const [teachers, setTeachers] = useState<Teacher[]>(getInitialTeachers());
+  
+  // Replaced teachers array with DutyDocuments array
+  const [dutyDocuments, setDutyDocuments] = useState<DutyDocument[]>([
+      {
+          id: '1',
+          label: 'Data Guru Utama',
+          academicYear: '2025/2026',
+          semester: 'SEMESTER 2',
+          docDate: '11 Agustus 2025',
+          teachers: getInitialTeachers(),
+          schedule: createEmptySchedule()
+      }
+  ]);
+  const [activeDutyDocId, setActiveDutyDocId] = useState<string>('1');
+
+  // Derived active teachers for schedule and constraints
+  const activeDutyDoc = dutyDocuments.find(d => d.id === activeDutyDocId) || dutyDocuments[0];
+  const teachers = activeDutyDoc?.teachers || [];
+
+  // Sync Schedule State -> Active Duty Document
+  // Whenever `schedule` changes, update the document in the list
+  useEffect(() => {
+      if (!schedule) return;
+      setDutyDocuments(prev => prev.map(doc => {
+          if (doc.id === activeDutyDocId) {
+              return { ...doc, schedule: schedule };
+          }
+          return doc;
+      }));
+  }, [schedule, activeDutyDocId]);
+
+  // Wrapper to update teachers in the active document (for child components)
+  const setTeachers = (newTeachers: Teacher[]) => {
+      setDutyDocuments(docs => docs.map(d => d.id === activeDutyDocId ? { ...d, teachers: newTeachers } : d));
+  };
+  
+  const [skDocuments, setSkDocuments] = useState<SKDocument[]>([
+      {
+          id: '1',
+          label: 'SK Utama',
+          skNumberCode: '1700',
+          skDateRaw: '2025-08-11',
+          semester: 'SEMESTER 1',
+          academicYear: '2025/2026',
+          tasks: getInitialAdditionalTasks()
+      }
+  ]);
+  
+  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig>({
+      principalName: 'DIDIK SULISTYO, M.M.Pd.',
+      principalNip: '196605181989011002',
+      academicYear: '2025/2026',
+      semester: 'Semester 2'
+  });
+
   const [offConstraints, setOffConstraints] = useState<OffDayConstraints>({});
   const [jpSplitSettings, setJpSplitSettings] = useState<JPSplitConstraints>({});
   const [activeTab, setActiveTab] = useState<Tab>('SCHEDULE');
@@ -34,38 +93,109 @@ const App: React.FC = () => {
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
+  // Tab Dropdown States
+  const [isScheduleTabOpen, setIsScheduleTabOpen] = useState(false);
+  const scheduleTabRef = useRef<HTMLDivElement>(null);
+
+  const [isSkTabOpen, setIsSkTabOpen] = useState(false);
+  const skTabRef = useRef<HTMLDivElement>(null);
+
   // Initial Initialization & Load Data
   useEffect(() => {
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
         try {
             const parsed = JSON.parse(savedData);
-            if (parsed.schedule) setSchedule(parsed.schedule);
-            else setSchedule(createEmptySchedule());
             
-            if (parsed.teachers) setTeachers(parsed.teachers);
-            else setTeachers(getInitialTeachers());
+            // Handle Duty Documents Migration
+            let loadedDocs: DutyDocument[] = [];
+            if (parsed.teachers && (!parsed.dutyDocuments || parsed.dutyDocuments.length === 0)) {
+                // Migration V1 -> V2
+                loadedDocs = [{
+                    id: '1',
+                    label: 'Data Guru Utama',
+                    academicYear: '2025/2026',
+                    semester: 'SEMESTER 2',
+                    docDate: '11 Agustus 2025',
+                    teachers: parsed.teachers,
+                    schedule: parsed.schedule || createEmptySchedule()
+                }];
+            } else if (parsed.dutyDocuments) {
+                // Load existing docs
+                loadedDocs = parsed.dutyDocuments.map((doc: any) => ({
+                    ...doc,
+                    // Ensure schedule exists in doc
+                    schedule: doc.schedule || createEmptySchedule()
+                }));
+            } else {
+                loadedDocs = [{
+                    id: '1',
+                    label: 'Data Guru Utama',
+                    academicYear: '2025/2026',
+                    semester: 'SEMESTER 2',
+                    docDate: '11 Agustus 2025',
+                    teachers: getInitialTeachers(),
+                    schedule: createEmptySchedule()
+                }];
+            }
+            
+            setDutyDocuments(loadedDocs);
 
+            // Determine active ID
+            const activeId = parsed.activeDutyDocId || '1';
+            setActiveDutyDocId(activeId);
+
+            // Set global schedule from active doc
+            const activeDoc = loadedDocs.find(d => d.id === activeId) || loadedDocs[0];
+            setSchedule(activeDoc.schedule);
+
+            // SK Migration
+            if (parsed.additionalTasks && Array.isArray(parsed.additionalTasks) && !parsed.skDocuments) {
+                setSkDocuments([{
+                    id: '1',
+                    label: 'SK Utama',
+                    skNumberCode: '1700',
+                    skDateRaw: '2025-08-11',
+                    semester: 'SEMESTER 1',
+                    academicYear: '2025/2026',
+                    tasks: parsed.additionalTasks
+                }]);
+            } else if (parsed.skDocuments) {
+                const migratedDocs = parsed.skDocuments.map((doc: any) => ({
+                    ...doc,
+                    semester: doc.semester || 'SEMESTER 1',
+                    academicYear: doc.academicYear || '2025/2026'
+                }));
+                setSkDocuments(migratedDocs);
+            }
+
+            if (parsed.schoolConfig) setSchoolConfig(parsed.schoolConfig);
             if (parsed.offConstraints) setOffConstraints(parsed.offConstraints);
             if (parsed.jpSplitSettings) setJpSplitSettings(parsed.jpSplitSettings);
             if (parsed.timestamp) setLastSaved(parsed.timestamp);
         } catch (e) {
             console.error("Failed to load saved data", e);
             setSchedule(createEmptySchedule());
-            setTeachers(getInitialTeachers());
         }
     } else {
         setSchedule(createEmptySchedule());
-        setTeachers(getInitialTeachers());
     }
   }, []);
 
   // Save Data Function
   const handleSaveData = () => {
       const now = new Date().toLocaleString('id-ID');
+      // Sync current schedule to active doc before saving (although useEffect does this, safe to ensure)
+      const updatedDocs = dutyDocuments.map(doc => 
+          doc.id === activeDutyDocId ? { ...doc, schedule: schedule! } : doc
+      );
+
       const dataToSave = {
-          schedule,
-          teachers,
+          schedule, // Saved for backward compat, but dutyDocuments is main source
+          dutyDocuments: updatedDocs, 
+          activeDutyDocId,
+          skDocuments,
+          schoolConfig,
           offConstraints,
           jpSplitSettings,
           timestamp: now
@@ -73,6 +203,42 @@ const App: React.FC = () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
       setLastSaved(now);
       alert('Data berhasil disimpan ke browser!');
+  };
+
+  // Switch Active Document
+  const handleSwitchDoc = (newId: string) => {
+      // 1. Find new doc
+      const newDoc = dutyDocuments.find(d => d.id === newId);
+      if (!newDoc) return;
+
+      // 2. Set Active ID
+      setActiveDutyDocId(newId);
+
+      // 3. Load schedule from new doc
+      setSchedule(newDoc.schedule);
+  };
+
+  // Duplicate Current Document
+  const handleDuplicateCurrentDoc = () => {
+      if (!activeDutyDoc) return;
+      
+      const newId = Date.now().toString();
+      
+      // Deep Copy
+      const docCopy: DutyDocument = JSON.parse(JSON.stringify(activeDutyDoc));
+      docCopy.id = newId;
+      docCopy.label = `${activeDutyDoc.label} (Salinan)`;
+      // Ensure we capture the latest schedule state
+      if (schedule) {
+          docCopy.schedule = JSON.parse(JSON.stringify(schedule));
+      }
+
+      const newDocs = [...dutyDocuments, docCopy];
+      setDutyDocuments(newDocs);
+      setActiveDutyDocId(newId);
+      setSchedule(docCopy.schedule);
+      
+      alert(`Berhasil menduplikasi "${activeDutyDoc.label}"`);
   };
 
   // Close dropdowns when clicking outside
@@ -83,6 +249,12 @@ const App: React.FC = () => {
           }
           if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
             setIsExportDropdownOpen(false);
+          }
+          if (scheduleTabRef.current && !scheduleTabRef.current.contains(event.target as Node)) {
+            setIsScheduleTabOpen(false);
+          }
+          if (skTabRef.current && !skTabRef.current.contains(event.target as Node)) {
+            setIsSkTabOpen(false);
           }
       };
       document.addEventListener('mousedown', handleClickOutside);
@@ -157,10 +329,19 @@ const App: React.FC = () => {
           setSchedule(emptySchedule);
           
           // Auto-save the empty state to ensure it persists even if page is reloaded
+          // Update current doc
+          const updatedDocs = dutyDocuments.map(doc => 
+            doc.id === activeDutyDocId ? { ...doc, schedule: emptySchedule } : doc
+          );
+          setDutyDocuments(updatedDocs);
+
           const now = new Date().toLocaleString('id-ID');
           const dataToSave = {
               schedule: emptySchedule,
-              teachers,
+              dutyDocuments: updatedDocs,
+              activeDutyDocId,
+              skDocuments,
+              schoolConfig,
               offConstraints,
               jpSplitSettings,
               timestamp: now
@@ -187,17 +368,45 @@ const App: React.FC = () => {
   const showExport = activeTab === 'SCHEDULE' || activeTab === 'DUTIES' || activeTab === 'EDIT_MANUAL';
   const showControls = activeTab === 'SCHEDULE' || activeTab === 'EDIT_MANUAL';
 
+  const scheduleTabs: Tab[] = ['SCHEDULE', 'PER_CLASS_TEACHER', 'EDIT_MANUAL', 'OFF_CODES', 'JP_DIST'];
+  const isScheduleTabActive = scheduleTabs.includes(activeTab);
+
+  const skTabs: Tab[] = ['SK_DECISION', 'SK_ADDITIONAL_TASK', 'SK_TAS_TASK'];
+  const isSkTabActive = skTabs.includes(activeTab);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       {/* Header */}
       <header className="bg-blue-900 text-white shadow-md no-print sticky top-0 z-30">
         <div className="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div>
-                <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-                    SMPN 3 Pacet
-                    {lastSaved && <span className="text-[10px] font-normal bg-blue-800 px-2 py-0.5 rounded text-blue-200">Disimpan: {lastSaved}</span>}
-                </h1>
-                <p className="text-blue-200 text-xs md:text-sm">Jadwal Pelajaran 2025/2026 Semester 2</p>
+            <div className="flex items-center gap-4">
+                {/* Logo Added Here */}
+                <img 
+                    src="https://iili.io/fV9vLAu.png" 
+                    alt="Logo SMPN 3 Pacet" 
+                    className="h-12 w-auto bg-white rounded-full p-1"
+                />
+                <div>
+                    <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+                        SMPN 3 Pacet
+                        {lastSaved && <span className="text-[10px] font-normal bg-blue-800 px-2 py-0.5 rounded text-blue-200">Disimpan: {lastSaved}</span>}
+                    </h1>
+                    <div className="text-blue-200 text-xs md:text-sm flex items-center gap-1 mt-1">
+                        <span>Jadwal Pelajaran</span>
+                        <input 
+                            type="text" 
+                            className="bg-blue-800 text-white border border-blue-700 rounded px-1 w-20 text-center focus:outline-none focus:border-blue-400"
+                            value={schoolConfig.academicYear}
+                            onChange={(e) => setSchoolConfig({...schoolConfig, academicYear: e.target.value})}
+                        />
+                        <input 
+                            type="text" 
+                            className="bg-blue-800 text-white border border-blue-700 rounded px-1 w-24 text-center focus:outline-none focus:border-blue-400"
+                            value={schoolConfig.semester}
+                            onChange={(e) => setSchoolConfig({...schoolConfig, semester: e.target.value})}
+                        />
+                    </div>
+                </div>
             </div>
             <div className="flex gap-2 items-center">
                 {/* Save Button */}
@@ -245,147 +454,150 @@ const App: React.FC = () => {
       {/* Tabs Navigation */}
       <div className="bg-white border-b border-gray-200 shadow-sm no-print sticky top-[60px] z-20">
         <div className="container mx-auto">
-            <div className="flex overflow-x-auto">
-                <button 
-                    onClick={() => setActiveTab('SCHEDULE')}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'SCHEDULE' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    Jadwal Utama
-                </button>
-                 <button 
-                    onClick={() => setActiveTab('PER_CLASS_TEACHER')}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'PER_CLASS_TEACHER' ? 'border-teal-600 text-teal-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    Jadwal Per Kelas/Guru
-                </button>
-                <button 
-                    onClick={() => setActiveTab('EDIT_MANUAL')}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'EDIT_MANUAL' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    Edit Manual
-                </button>
+            {/* Changed from overflow-x-auto to flex-wrap to prevent clipping of the dropdown menu */}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-1">
+                
+                {/* Schedule Settings Dropdown Tab */}
+                <div className="relative" ref={scheduleTabRef}>
+                    <button 
+                        onClick={() => setIsScheduleTabOpen(!isScheduleTabOpen)}
+                        className={`px-6 py-3 text-sm font-bold border-b-2 whitespace-nowrap flex items-center gap-2 ${isScheduleTabActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                    >
+                        Setting Jadwal Pelajaran
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" className={`transition-transform ${isScheduleTabOpen ? 'rotate-180' : ''}`}>
+                            <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                        </svg>
+                    </button>
+                    
+                    {isScheduleTabOpen && (
+                        <div className="absolute top-full left-0 bg-white border border-gray-200 shadow-xl rounded-b-lg w-56 z-50 flex flex-col">
+                            <button 
+                                onClick={() => { setActiveTab('SCHEDULE'); setIsScheduleTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'SCHEDULE' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                Jadwal Utama
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('PER_CLASS_TEACHER'); setIsScheduleTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'PER_CLASS_TEACHER' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                Jadwal Per Kelas/Guru
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('EDIT_MANUAL'); setIsScheduleTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'EDIT_MANUAL' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                Edit Manual
+                            </button>
+                            <div className="border-t my-1"></div>
+                            <button 
+                                onClick={() => { setActiveTab('OFF_CODES'); setIsScheduleTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'OFF_CODES' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                Libur (Off)
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('JP_DIST'); setIsScheduleTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'JP_DIST' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                Setting JP
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 <button 
                     onClick={() => setActiveTab('DUTIES')}
                     className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'DUTIES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 >
                     Tugas Guru
                 </button>
+
+                {/* SK PBM Dropdown Tab */}
+                <div className="relative" ref={skTabRef}>
+                    <button 
+                        onClick={() => setIsSkTabOpen(!isSkTabOpen)}
+                        className={`px-6 py-3 text-sm font-bold border-b-2 whitespace-nowrap flex items-center gap-2 ${isSkTabActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800'}`}
+                    >
+                        SK PBM
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" className={`transition-transform ${isSkTabOpen ? 'rotate-180' : ''}`}>
+                            <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                        </svg>
+                    </button>
+                    
+                    {isSkTabOpen && (
+                        <div className="absolute top-full left-0 bg-white border border-gray-200 shadow-xl rounded-b-lg w-56 z-50 flex flex-col">
+                            <button 
+                                onClick={() => { setActiveTab('SK_DECISION'); setIsSkTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'SK_DECISION' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                SK Pembagian Tugas
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('SK_ADDITIONAL_TASK'); setIsSkTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'SK_ADDITIONAL_TASK' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                SK Tugas Tambahan
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('SK_TAS_TASK'); setIsSkTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'SK_TAS_TASK' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                SK Tugas TU
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 <button 
-                    onClick={() => setActiveTab('OFF_CODES')}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'OFF_CODES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('SETTINGS')}
+                    className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === 'SETTINGS' ? 'border-gray-600 text-gray-800 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 >
-                    Libur (Off)
-                </button>
-                <button 
-                    onClick={() => setActiveTab('JP_DIST')}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'JP_DIST' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    Setting JP
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+                        <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1-.52-1.255l.16-.292c-.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+                    </svg>
+                    Pengaturan
                 </button>
             </div>
         </div>
       </div>
-
-      {/* Controls (For Schedule & Edit Manual) */}
-      {showControls && (
-        <div className="bg-gray-100 border-b border-gray-200 p-3 shadow-inner no-print">
-            <div className="container mx-auto flex flex-wrap gap-4 items-center justify-between">
-                
-                {/* Left Side: Filter */}
-                <div className="flex flex-wrap gap-4 items-center">
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-600">Filter Tampilan:</span>
-                        <select 
-                            value={filterType} 
-                            onChange={(e) => {
-                                setFilterType(e.target.value as 'CLASS' | 'TEACHER');
-                                setFilterValue(['ALL']);
-                                setIsMultiSelectOpen(false);
-                            }}
-                            className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="CLASS">Per Kelas</option>
-                            <option value="TEACHER">Per Guru</option>
-                        </select>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {filterType === 'CLASS' ? (
-                            <select 
-                                value={filterValue[0] || 'ALL'}
-                                onChange={(e) => setFilterValue([e.target.value])}
-                                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="ALL">Tampilkan Semua</option>
-                                {CLASSES.map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
-                        ) : (
-                            <div className="relative" ref={multiSelectRef}>
-                                <button 
-                                    onClick={() => setIsMultiSelectOpen(!isMultiSelectOpen)}
-                                    className="bg-white border border-gray-300 rounded px-3 py-1 text-sm flex items-center justify-between min-w-[220px] shadow-sm hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <span className="truncate">
-                                        {filterValue.includes('ALL') 
-                                            ? 'Semua Guru' 
-                                            : filterValue.length === 1 
-                                                ? teachers.find(t => t.id.toString() === filterValue[0])?.name || '1 Guru Terpilih'
-                                                : `${filterValue.length} Guru Terpilih`}
-                                    </span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" className="ml-2 text-gray-500">
-                                        <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
-                                    </svg>
-                                </button>
-
-                                {isMultiSelectOpen && (
-                                    <div className="absolute top-full left-0 mt-1 w-72 max-h-96 overflow-y-auto bg-white border border-gray-300 shadow-xl rounded-md z-50 animate-fade-in">
-                                        <div className="sticky top-0 bg-gray-50 p-2 border-b border-gray-200 z-10 flex justify-between items-center">
-                                            <span className="text-xs font-bold text-gray-500 uppercase">Pilih Guru</span>
-                                            <button onClick={() => setFilterValue(['ALL'])} className="text-xs text-blue-600 hover:underline">Reset</button>
-                                        </div>
-                                        <div className="p-1">
-                                            <label className="flex items-center gap-3 p-2 hover:bg-blue-50 cursor-pointer rounded">
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={filterValue.includes('ALL')} 
-                                                    onChange={() => setFilterValue(['ALL'])} 
-                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
-                                                />
-                                                <span className="text-sm font-semibold">Tampilkan Semua</span>
-                                            </label>
-                                            <hr className="my-1 border-gray-200"/>
-                                            {teachers.map(t => (
-                                                <label key={t.id} className="flex items-start gap-3 p-2 hover:bg-blue-50 cursor-pointer rounded transition-colors">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={filterValue.includes(t.id.toString())} 
-                                                        onChange={() => toggleTeacherFilter(t.id.toString())}
-                                                        className="w-4 h-4 mt-1 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <div className="text-sm font-medium text-gray-800 leading-tight">{t.name}</div>
-                                                        <div className="text-xs text-gray-500 font-mono mt-0.5">{t.code}</div>
-                                                    </div>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
 
       {/* Main Content */}
       <main className="flex-1 container mx-auto p-4">
         {activeTab === 'SCHEDULE' && (
             schedule ? (
                 <>
+                    {/* Document Selector & Info Bar */}
+                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mb-4 flex flex-col md:flex-row justify-between items-center gap-4 no-print shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <label className="text-sm font-bold text-yellow-800 uppercase">Sumber Data (Versi Jadwal):</label>
+                            <select 
+                                value={activeDutyDocId}
+                                onChange={(e) => handleSwitchDoc(e.target.value)}
+                                className="border border-yellow-300 rounded px-2 py-1 text-sm font-bold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                            >
+                                {dutyDocuments.map(doc => (
+                                    <option key={doc.id} value={doc.id}>{doc.label}</option>
+                                ))}
+                            </select>
+                            <button 
+                                onClick={handleDuplicateCurrentDoc}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm transition-colors"
+                                title="Duplikat versi jadwal ini"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/>
+                                </svg>
+                                Duplikat
+                            </button>
+                        </div>
+                        <div className="text-xs font-bold text-gray-600 flex gap-4">
+                            <span>Semester: {activeDutyDoc?.semester || '-'}</span>
+                            <span>Tahun: {activeDutyDoc?.academicYear || '-'}</span>
+                        </div>
+                    </div>
+
                     {/* Code Palette for Distribution */}
                     <div className="bg-white p-4 shadow-md rounded-lg mb-6 border border-gray-200 no-print">
                         <div className="flex justify-between items-center border-b pb-2 mb-2">
@@ -466,6 +678,9 @@ const App: React.FC = () => {
                 filterType={filterType}
                 filterValue={filterValue}
                 jpSplitSettings={jpSplitSettings}
+                documents={dutyDocuments}
+                activeDocId={activeDutyDocId}
+                setActiveDocId={handleSwitchDoc}
              />
         )}
 
@@ -474,8 +689,29 @@ const App: React.FC = () => {
                 teachers={teachers} 
                 setTeachers={setTeachers} 
                 schedule={null} 
-                mode="static" 
+                mode="static"
+                documents={dutyDocuments}
+                setDocuments={setDutyDocuments}
+                activeDocId={activeDutyDocId}
+                setActiveDocId={(id) => handleSwitchDoc(id as string)}
             />
+        )}
+
+        {activeTab === 'SK_DECISION' && (
+            <DecisionLetter schoolConfig={schoolConfig} />
+        )}
+
+        {activeTab === 'SK_ADDITIONAL_TASK' && (
+            <AdditionalTaskLetter 
+                documents={skDocuments}
+                setDocuments={setSkDocuments}
+                teachers={teachers}
+                schoolConfig={schoolConfig}
+            />
+        )}
+
+        {activeTab === 'SK_TAS_TASK' && (
+            <TASAdditionalTaskLetter schoolConfig={schoolConfig} />
         )}
 
         {activeTab === 'OFF_CODES' && (
@@ -488,6 +724,10 @@ const App: React.FC = () => {
 
         {activeTab === 'JP_DIST' && (
             <JPDistributionTable settings={jpSplitSettings} onUpdate={handleSplitUpdate} />
+        )}
+
+        {activeTab === 'SETTINGS' && (
+            <Settings config={schoolConfig} onSave={setSchoolConfig} />
         )}
       </main>
 

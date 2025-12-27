@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { WeeklySchedule, CLASSES, Teacher, ClassName, ScheduleCell, JPSplitConstraints, SplitOption } from '../types';
+import { WeeklySchedule, CLASSES, Teacher, ClassName, ScheduleCell, JPSplitConstraints, SplitOption, DutyDocument } from '../types';
 import { TIME_STRUCTURE } from '../data';
 import { TeacherDutyTable } from './TeacherDutyTable';
 
@@ -10,6 +11,9 @@ interface Props {
   filterType: 'CLASS' | 'TEACHER';
   filterValue: string[];
   jpSplitSettings?: JPSplitConstraints;
+  documents?: DutyDocument[];
+  activeDocId?: string;
+  setActiveDocId?: (id: string) => void;
 }
 
 // Reuse logic from scheduler to understand splits
@@ -25,7 +29,17 @@ const SPLIT_MAP: Record<SplitOption, number[]> = {
     'DEFAULT': []
 };
 
-export const ManualEditTable: React.FC<Props> = ({ schedule, setSchedule, teachers, filterType, filterValue, jpSplitSettings = {} }) => {
+export const ManualEditTable: React.FC<Props> = ({ 
+    schedule, 
+    setSchedule, 
+    teachers, 
+    filterType, 
+    filterValue, 
+    jpSplitSettings = {},
+    documents,
+    activeDocId,
+    setActiveDocId
+}) => {
   const [activeDay, setActiveDay] = useState<string>('SENIN');
   
   // Dropdown State
@@ -381,6 +395,35 @@ export const ManualEditTable: React.FC<Props> = ({ schedule, setSchedule, teache
 
   return (
     <div className="flex flex-col relative min-h-screen">
+      {/* Document Selector */}
+      {documents && activeDocId && setActiveDocId && (
+          <div className="bg-purple-50 border border-purple-200 p-3 rounded mb-4 flex flex-col md:flex-row justify-between items-center gap-4 no-print shadow-sm">
+              <div className="flex items-center gap-3">
+                  <label className="text-sm font-bold text-purple-900 uppercase">Edit Versi Jadwal:</label>
+                  <select 
+                      value={activeDocId}
+                      onChange={(e) => setActiveDocId(e.target.value)}
+                      className="border border-purple-300 rounded px-2 py-1 text-sm font-bold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                      {documents.map(doc => (
+                          <option key={doc.id} value={doc.id}>{doc.label}</option>
+                      ))}
+                  </select>
+              </div>
+              <div className="text-xs font-bold text-gray-600 flex gap-4">
+                  {(() => {
+                      const doc = documents.find(d => d.id === activeDocId);
+                      return doc ? (
+                          <>
+                              <span>Semester: {doc.semester}</span>
+                              <span>Tahun: {doc.academicYear}</span>
+                          </>
+                      ) : null;
+                  })()}
+              </div>
+          </div>
+      )}
+
       {/* Day Navigation */}
       <div className="flex flex-wrap gap-2 mb-4 overflow-x-auto pb-2">
         {TIME_STRUCTURE.map(d => (
