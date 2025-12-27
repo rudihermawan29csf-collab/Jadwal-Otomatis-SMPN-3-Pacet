@@ -1,16 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { exportEkskulPDF, exportEkskulWord } from '../utils/exporter';
-import { EkskulEntry, Teacher, EkskulDocument, SchoolConfig } from '../types';
+import { EkskulEntry, Teacher, EkskulDocument, SchoolConfig, DutyDocument } from '../types';
 
 interface Props {
     documents: EkskulDocument[];
     setDocuments: (docs: EkskulDocument[]) => void;
     teachers: Teacher[];
     schoolConfig: SchoolConfig;
+    // New props for source data selection
+    dutyDocuments?: DutyDocument[];
+    activeDutyDocId?: string;
+    onSwitchDutyDoc?: (id: string) => void;
 }
 
-export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teachers, schoolConfig }) => {
+export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teachers, schoolConfig, dutyDocuments, activeDutyDocId, onSwitchDutyDoc }) => {
     const [activeDocId, setActiveDocId] = useState<string>(documents[0]?.id || '1');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<EkskulEntry | null>(null);
@@ -65,6 +69,7 @@ export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teacher
         if (confirm(`Hapus dokumen "${activeDoc.label}"?`)) {
             const newDocs = documents.filter(d => d.id !== activeDoc.id);
             setDocuments(newDocs);
+            setActiveDocId(newDocs[0].id);
         }
     };
 
@@ -123,8 +128,27 @@ export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teacher
 
     return (
         <div className="flex flex-col items-center">
+            {/* BILAH SUMBER DATA TUGAS GURU */}
+            {dutyDocuments && onSwitchDutyDoc && (
+                <div className="w-full max-w-5xl bg-blue-600 text-white p-3 rounded mb-4 flex justify-between items-center no-print shadow-md">
+                    <div className="flex items-center gap-3">
+                        <label className="text-xs font-bold uppercase">Sumber Data Guru:</label>
+                        <select 
+                            value={activeDutyDocId} 
+                            onChange={(e) => onSwitchDutyDoc(e.target.value)}
+                            className="bg-blue-700 border border-blue-400 rounded px-2 py-1 text-xs font-bold outline-none"
+                        >
+                            {dutyDocuments.map(doc => (
+                                <option key={doc.id} value={doc.id}>{doc.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <span className="text-[10px] italic">* Memilih versi data guru untuk dropdown pemilihan nama.</span>
+                </div>
+            )}
+
             {/* Toolbar */}
-            <div className="w-full max-w-5xl bg-blue-50 p-4 rounded-t border-x border-t border-blue-200 no-print flex flex-wrap gap-2 justify-between items-center">
+            <div className="w-full max-w-5xl bg-blue-50 p-4 rounded-t border-x border-t border-blue-200 no-print flex flex-wrap gap-2 justify-between items-center shadow-sm">
                 <div className="flex items-center gap-2">
                     <label className="text-sm font-bold text-blue-900">Pilih SK Ekskul:</label>
                     <select value={activeDocId} onChange={(e) => setActiveDocId(e.target.value)} className="border rounded px-2 py-1 text-sm font-bold">
@@ -132,12 +156,12 @@ export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teacher
                     </select>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={handleAdd} className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-xs font-bold shadow-sm transition flex items-center gap-1">
+                    <button onClick={handleAdd} className="bg-green-600 text-white px-4 py-1.5 rounded text-xs font-bold shadow-sm transition flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
                         Tambah Pembina
                     </button>
-                    <button onClick={handleDuplicateDoc} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold transition">Duplikat SK</button>
-                    <button onClick={handleDeleteDoc} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-bold transition">Hapus SK</button>
+                    <button onClick={handleDuplicateDoc} className="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold transition">Duplikat</button>
+                    <button onClick={handleDeleteDoc} className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold transition">Hapus</button>
                 </div>
             </div>
 
@@ -198,28 +222,15 @@ export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teacher
                                     <td className="border border-black p-2 text-center">{idx + 1}</td>
                                     <td className="border border-black p-1">
                                         <select className="w-full border mb-1 text-[9px] bg-white" onChange={handleTeacherSelect} defaultValue="">
-                                            <option value="" disabled>-- Pilih dari Daftar Guru --</option>
+                                            <option value="" disabled>-- Pilih Guru --</option>
                                             {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                         </select>
-                                        <input 
-                                            className="w-full border font-bold p-1 placeholder-gray-400" 
-                                            placeholder="Ketik Nama Pembina Manual..." 
-                                            value={editForm.name} 
-                                            onChange={e => setEditForm({...editForm, name: e.target.value})} 
-                                        />
+                                        <input className="w-full border font-bold p-1 placeholder-gray-400 text-[10px]" placeholder="Nama Pembina" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
                                     </td>
-                                    <td className="border border-black p-1">
-                                        <input className="w-full border p-1" placeholder="NIP" value={editForm.nip} onChange={e => setEditForm({...editForm, nip: e.target.value})} />
-                                    </td>
-                                    <td className="border border-black p-1">
-                                        <input className="w-full border p-1" placeholder="Golongan" value={editForm.rank} onChange={e => setEditForm({...editForm, rank: e.target.value})} />
-                                    </td>
-                                    <td className="border border-black p-1">
-                                        <input className="w-full border p-1" placeholder="Jabatan" value={editForm.job} onChange={e => setEditForm({...editForm, job: e.target.value})} />
-                                    </td>
-                                    <td className="border border-black p-1">
-                                        <input className="w-full border p-1 font-bold" placeholder="Ekstrakurikuler" value={editForm.ekskulName} onChange={e => setEditForm({...editForm, ekskulName: e.target.value})} />
-                                    </td>
+                                    <td className="border border-black p-1"><input className="w-full border p-1 text-[10px]" placeholder="NIP" value={editForm.nip} onChange={e => setEditForm({...editForm, nip: e.target.value})} /></td>
+                                    <td className="border border-black p-1"><input className="w-full border p-1 text-[10px]" placeholder="Gol" value={editForm.rank} onChange={e => setEditForm({...editForm, rank: e.target.value})} /></td>
+                                    <td className="border border-black p-1"><input className="w-full border p-1 text-[10px]" placeholder="Jabatan" value={editForm.job} onChange={e => setEditForm({...editForm, job: e.target.value})} /></td>
+                                    <td className="border border-black p-1"><input className="w-full border p-1 font-bold text-[10px]" placeholder="Nama Ekstrakurikuler" value={editForm.ekskulName} onChange={e => setEditForm({...editForm, ekskulName: e.target.value})} /></td>
                                     <td className="border border-black p-1 no-print">
                                         <button onClick={handleSave} className="bg-green-600 text-white w-full text-[9px] mb-1 py-1 rounded font-bold">Simpan</button>
                                         <button onClick={() => setEditingId(null)} className="bg-gray-500 text-white w-full text-[9px] py-1 rounded">Batal</button>
@@ -235,21 +246,16 @@ export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teacher
                                     <td className="border border-black p-2 font-bold align-top">{row.ekskulName}</td>
                                     <td className="border border-black p-2 text-center align-top no-print">
                                         <div className="flex flex-col gap-1">
-                                            <button onClick={() => handleEdit(row)} className="text-blue-600 hover:underline font-medium">Edit</button>
-                                            <button onClick={() => handleDeleteEntry(row.id)} className="text-red-600 hover:underline font-medium">Hapus</button>
+                                            <button onClick={() => handleEdit(row)} className="text-blue-600 hover:underline">Edit</button>
+                                            <button onClick={() => handleDeleteEntry(row.id)} className="text-red-600 hover:underline">Hapus</button>
                                         </div>
                                     </td>
                                 </tr>
                             )
                         ))}
-                        {activeDoc.entries.length === 0 && (
-                            <tr>
-                                <td colSpan={7} className="border border-black p-8 text-center text-gray-400 italic">Belum ada data pembina. Klik "Tambah Pembina" untuk mulai mengisi (bisa ketik nama manual atau pilih dari daftar guru).</td>
-                            </tr>
-                        )}
                     </tbody>
                 </table>
-                <button onClick={handleAdd} className="w-full mt-3 border-2 border-dashed border-blue-200 text-blue-500 p-3 no-print hover:bg-blue-50 hover:border-blue-400 transition-all font-bold rounded-lg">+ TAMBAH BARIS PEMBINA MANUAL / LUAR GURU</button>
+                <button onClick={handleAdd} className="w-full mt-3 border-2 border-dashed border-blue-200 text-blue-500 p-2 no-print hover:bg-blue-50 transition-all font-bold rounded">+ Tambah Baris Pembina</button>
 
                 <div className="mt-12 flex justify-end">
                     <div className="w-72 text-sm text-center">
@@ -261,11 +267,11 @@ export const EkskulLetter: React.FC<Props> = ({ documents, setDocuments, teacher
             </div>
 
             <div className="no-print flex gap-4 mb-12 flex-wrap justify-center">
-                <button onClick={() => exportEkskulPDF(activeDoc.entries, 'A4', fullSkNumber, formattedDate, activeDoc.semester, activeDoc.academicYear, schoolConfig)} className="bg-red-600 text-white px-6 py-2 rounded font-bold shadow-md hover:bg-red-700 transition">PDF A4</button>
-                <button onClick={() => exportEkskulPDF(activeDoc.entries, 'F4', fullSkNumber, formattedDate, activeDoc.semester, activeDoc.academicYear, schoolConfig)} className="bg-blue-600 text-white px-6 py-2 rounded font-bold shadow-md hover:bg-blue-700 transition">PDF F4 (Folio)</button>
-                <button onClick={() => exportEkskulWord(activeDoc.entries, fullSkNumber, formattedDate, activeDoc.semester, activeDoc.academicYear, schoolConfig)} className="bg-indigo-600 text-white px-6 py-2 rounded font-bold shadow-md hover:bg-indigo-700 transition flex items-center gap-2">
+                <button onClick={() => exportEkskulPDF(activeDoc.entries, 'A4', fullSkNumber, formattedDate, activeDoc.semester, activeDoc.academicYear, schoolConfig)} className="bg-red-600 text-white px-6 py-2 rounded font-bold shadow hover:bg-red-700">PDF A4</button>
+                <button onClick={() => exportEkskulPDF(activeDoc.entries, 'F4', fullSkNumber, formattedDate, activeDoc.semester, activeDoc.academicYear, schoolConfig)} className="bg-blue-600 text-white px-6 py-2 rounded font-bold shadow hover:bg-blue-700">PDF F4</button>
+                <button onClick={() => exportEkskulWord(activeDoc.entries, fullSkNumber, formattedDate, activeDoc.semester, activeDoc.academicYear, schoolConfig)} className="bg-indigo-600 text-white px-6 py-2 rounded font-bold shadow hover:bg-indigo-700 flex items-center gap-2">
                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.485 6.879l1.101-4.404L5.5 1h5l-1.086 1.475-1.101 4.404h.828l1.101-4.404L9.227 1h5l-1.086 1.475-1.101 4.404H13l1.101-4.404L13.015 1h2.485l-1.657 6.621h-2.142L10.55 3.125l-1.101 4.496H7.307L8.458 3.125l-1.101 4.496H5.485z"/></svg>
-                   DOWNLOAD WORD
+                   WORD
                 </button>
             </div>
         </div>

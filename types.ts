@@ -73,6 +73,16 @@ export interface EkskulEntry {
     ekskulName: string;
 }
 
+// Data structure for MGMP (Lampiran 4)
+export interface MGMPEntry {
+    id: string;
+    name: string;
+    nip: string;
+    rank: string;
+    job: string;
+    subject: string;
+}
+
 // New Interface for managing multiple SK Documents
 export interface SKDocument {
     id: string;
@@ -104,6 +114,17 @@ export interface EkskulDocument {
     semester: string;
     academicYear: string;
     entries: EkskulEntry[];
+}
+
+// Interface for MGMP Document
+export interface MGMPDocument {
+    id: string;
+    label: string;
+    skNumberCode: string;
+    skDateRaw: string;
+    semester: string;
+    academicYear: string;
+    entries: MGMPEntry[];
 }
 
 // Interface for Decision Letter (SK Pembagian Tugas)
@@ -168,4 +189,4 @@ export type SplitOption = '3+3' | '2+2+2' | '3+2' | '2+2' | '4' | '3' | '2' | '1
 export type JPSplitConstraints = Record<string, SplitOption[]>;
 
 // Navigation Tabs
-export type Tab = 'SCHEDULE' | 'EDIT_MANUAL' | 'DUTIES' | 'OFF_CODES' | 'JP_DIST' | 'PER_CLASS_TEACHER' | 'SK_DECISION' | 'SK_ADDITIONAL_TASK' | 'SK_TAS_TASK' | 'SK_WALAS' | 'SK_EKSKUL' | 'SETTINGS';
+export type Tab = 'SCHEDULE' | 'EDIT_MANUAL' | 'DUTIES' | 'OFF_CODES' | 'JP_DIST' | 'PER_CLASS_TEACHER' | 'SK_DECISION' | 'SK_ADDITIONAL_TASK' | 'SK_TAS_TASK' | 'SK_WALAS' | 'SK_EKSKUL' | 'SK_MGMP' | 'SETTINGS';
