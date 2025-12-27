@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { generateSchedule, createEmptySchedule, fillScheduleWithCode } from './scheduler';
-import { WeeklySchedule, CLASSES, OffDayConstraints, Teacher, JPSplitConstraints, SplitOption, ScheduleCell, Tab, AdditionalTask, SKDocument, SchoolConfig, DutyDocument } from './types';
+import { WeeklySchedule, CLASSES, OffDayConstraints, Teacher, JPSplitConstraints, SplitOption, ScheduleCell, Tab, AdditionalTask, SKDocument, SchoolConfig, DutyDocument, DecisionDocument, WalasDocument, EkskulDocument } from './types';
 import { INITIAL_TEACHERS, INITIAL_ADDITIONAL_TASKS } from './data';
 import { ScheduleTable } from './components/ScheduleTable';
 import { TeacherDutyTable } from './components/TeacherDutyTable';
@@ -11,6 +11,8 @@ import { ManualEditTable } from './components/ManualEditTable';
 import { PerClassTeacherSchedule } from './components/PerClassTeacherSchedule';
 import { DecisionLetter } from './components/DecisionLetter';
 import { AdditionalTaskLetter } from './components/AdditionalTaskLetter';
+import { WalasLetter } from './components/WalasLetter';
+import { EkskulLetter } from './components/EkskulLetter';
 import { TASAdditionalTaskLetter } from './components/TASAdditionalTaskLetter';
 import { Settings } from './components/Settings';
 import { exportDutiesExcel, exportDutiesPDF, exportScheduleExcel, exportSchedulePDF } from './utils/exporter';
@@ -69,6 +71,41 @@ const App: React.FC = () => {
           semester: 'SEMESTER 1',
           academicYear: '2025/2026',
           tasks: getInitialAdditionalTasks()
+      }
+  ]);
+
+  const [decisionDocuments, setDecisionDocuments] = useState<DecisionDocument[]>([
+    {
+        id: '1',
+        label: 'SK PBM Utama',
+        skNumberCode: '1481.1',
+        skDateRaw: '2025-07-14',
+        semester: 'SEMESTER 1',
+        academicYear: '2025/2026'
+    }
+  ]);
+
+  const [walasDocuments, setWalasDocuments] = useState<WalasDocument[]>([
+      {
+          id: '1',
+          label: 'SK Walas Utama',
+          skNumberCode: '1700',
+          skDateRaw: '2025-12-27',
+          semester: 'SEMESTER 1',
+          academicYear: '2025/2026',
+          entries: []
+      }
+  ]);
+
+  const [ekskulDocuments, setEkskulDocuments] = useState<EkskulDocument[]>([
+      {
+          id: '1',
+          label: 'SK Ekskul Utama',
+          skNumberCode: '1700',
+          skDateRaw: '2025-12-27',
+          semester: 'SEMESTER 1',
+          academicYear: '2025/2026',
+          entries: []
       }
   ]);
   
@@ -169,6 +206,21 @@ const App: React.FC = () => {
                 setSkDocuments(migratedDocs);
             }
 
+            // Decision Letters Migration
+            if (parsed.decisionDocuments) {
+                setDecisionDocuments(parsed.decisionDocuments);
+            }
+
+            // Walas Migration
+            if (parsed.walasDocuments) {
+                setWalasDocuments(parsed.walasDocuments);
+            }
+
+            // Ekskul Migration
+            if (parsed.ekskulDocuments) {
+                setEkskulDocuments(parsed.ekskulDocuments);
+            }
+
             if (parsed.schoolConfig) setSchoolConfig(parsed.schoolConfig);
             if (parsed.offConstraints) setOffConstraints(parsed.offConstraints);
             if (parsed.jpSplitSettings) setJpSplitSettings(parsed.jpSplitSettings);
@@ -195,6 +247,9 @@ const App: React.FC = () => {
           dutyDocuments: updatedDocs, 
           activeDutyDocId,
           skDocuments,
+          decisionDocuments,
+          walasDocuments,
+          ekskulDocuments,
           schoolConfig,
           offConstraints,
           jpSplitSettings,
@@ -216,29 +271,6 @@ const App: React.FC = () => {
 
       // 3. Load schedule from new doc
       setSchedule(newDoc.schedule);
-  };
-
-  // Duplicate Current Document
-  const handleDuplicateCurrentDoc = () => {
-      if (!activeDutyDoc) return;
-      
-      const newId = Date.now().toString();
-      
-      // Deep Copy
-      const docCopy: DutyDocument = JSON.parse(JSON.stringify(activeDutyDoc));
-      docCopy.id = newId;
-      docCopy.label = `${activeDutyDoc.label} (Salinan)`;
-      // Ensure we capture the latest schedule state
-      if (schedule) {
-          docCopy.schedule = JSON.parse(JSON.stringify(schedule));
-      }
-
-      const newDocs = [...dutyDocuments, docCopy];
-      setDutyDocuments(newDocs);
-      setActiveDutyDocId(newId);
-      setSchedule(docCopy.schedule);
-      
-      alert(`Berhasil menduplikasi "${activeDutyDoc.label}"`);
   };
 
   // Close dropdowns when clicking outside
@@ -341,6 +373,9 @@ const App: React.FC = () => {
               dutyDocuments: updatedDocs,
               activeDutyDocId,
               skDocuments,
+              decisionDocuments,
+              walasDocuments,
+              ekskulDocuments,
               schoolConfig,
               offConstraints,
               jpSplitSettings,
@@ -371,7 +406,7 @@ const App: React.FC = () => {
   const scheduleTabs: Tab[] = ['SCHEDULE', 'PER_CLASS_TEACHER', 'EDIT_MANUAL', 'OFF_CODES', 'JP_DIST'];
   const isScheduleTabActive = scheduleTabs.includes(activeTab);
 
-  const skTabs: Tab[] = ['SK_DECISION', 'SK_ADDITIONAL_TASK', 'SK_TAS_TASK'];
+  const skTabs: Tab[] = ['SK_DECISION', 'SK_ADDITIONAL_TASK', 'SK_TAS_TASK', 'SK_WALAS', 'SK_EKSKUL'];
   const isSkTabActive = skTabs.includes(activeTab);
 
   return (
@@ -540,6 +575,18 @@ const App: React.FC = () => {
                                 SK Tugas Tambahan
                             </button>
                             <button 
+                                onClick={() => { setActiveTab('SK_WALAS'); setIsSkTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'SK_WALAS' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                SK Wali Kelas
+                            </button>
+                            <button 
+                                onClick={() => { setActiveTab('SK_EKSKUL'); setIsSkTabOpen(false); }}
+                                className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'SK_EKSKUL' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
+                            >
+                                SK Ekstrakurikuler
+                            </button>
+                            <button 
                                 onClick={() => { setActiveTab('SK_TAS_TASK'); setIsSkTabOpen(false); }}
                                 className={`text-left px-4 py-3 hover:bg-blue-50 text-sm ${activeTab === 'SK_TAS_TASK' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}
                             >
@@ -581,16 +628,6 @@ const App: React.FC = () => {
                                     <option key={doc.id} value={doc.id}>{doc.label}</option>
                                 ))}
                             </select>
-                            <button 
-                                onClick={handleDuplicateCurrentDoc}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 shadow-sm transition-colors"
-                                title="Duplikat versi jadwal ini"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/>
-                                </svg>
-                                Duplikat
-                            </button>
                         </div>
                         <div className="text-xs font-bold text-gray-600 flex gap-4">
                             <span>Semester: {activeDutyDoc?.semester || '-'}</span>
@@ -667,6 +704,9 @@ const App: React.FC = () => {
              <PerClassTeacherSchedule 
                 schedule={schedule}
                 teachers={teachers}
+                documents={dutyDocuments}
+                activeDocId={activeDutyDocId}
+                setActiveDocId={handleSwitchDoc}
              />
         )}
 
@@ -698,13 +738,35 @@ const App: React.FC = () => {
         )}
 
         {activeTab === 'SK_DECISION' && (
-            <DecisionLetter schoolConfig={schoolConfig} />
+            <DecisionLetter 
+                documents={decisionDocuments}
+                setDocuments={setDecisionDocuments}
+                schoolConfig={schoolConfig} 
+            />
         )}
 
         {activeTab === 'SK_ADDITIONAL_TASK' && (
             <AdditionalTaskLetter 
                 documents={skDocuments}
                 setDocuments={setSkDocuments}
+                teachers={teachers}
+                schoolConfig={schoolConfig}
+            />
+        )}
+
+        {activeTab === 'SK_WALAS' && (
+            <WalasLetter 
+                documents={walasDocuments}
+                setDocuments={setWalasDocuments}
+                teachers={teachers}
+                schoolConfig={schoolConfig}
+            />
+        )}
+
+        {activeTab === 'SK_EKSKUL' && (
+            <EkskulLetter 
+                documents={ekskulDocuments}
+                setDocuments={setEkskulDocuments}
                 teachers={teachers}
                 schoolConfig={schoolConfig}
             />
@@ -718,12 +780,22 @@ const App: React.FC = () => {
             <OffCodeManager 
                 teachers={teachers}
                 constraints={offConstraints} 
-                onChange={setOffConstraints} 
+                onChange={setOffConstraints}
+                documents={dutyDocuments}
+                activeDocId={activeDutyDocId}
+                setActiveDocId={handleSwitchDoc} 
             />
         )}
 
         {activeTab === 'JP_DIST' && (
-            <JPDistributionTable settings={jpSplitSettings} onUpdate={handleSplitUpdate} />
+            <JPDistributionTable 
+                settings={jpSplitSettings} 
+                onUpdate={handleSplitUpdate}
+                teachers={teachers}
+                documents={dutyDocuments}
+                activeDocId={activeDutyDocId}
+                setActiveDocId={handleSwitchDoc} 
+            />
         )}
 
         {activeTab === 'SETTINGS' && (

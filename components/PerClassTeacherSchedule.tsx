@@ -1,23 +1,29 @@
+
 import React, { useState, useMemo } from 'react';
-import { WeeklySchedule, CLASSES, Teacher, ScheduleCell, ClassName } from '../types';
+import { WeeklySchedule, CLASSES, Teacher, ScheduleCell, ClassName, DutyDocument } from '../types';
 import { TIME_STRUCTURE } from '../data';
 import { exportSpecificClassPDF, exportSpecificTeacherPDF } from '../utils/exporter';
 
 interface Props {
     schedule: WeeklySchedule;
     teachers: Teacher[];
+    documents?: DutyDocument[];
+    activeDocId?: string;
+    setActiveDocId?: (id: string) => void;
 }
 
-export const PerClassTeacherSchedule: React.FC<Props> = ({ schedule, teachers }) => {
+export const PerClassTeacherSchedule: React.FC<Props> = ({ schedule, teachers, documents, activeDocId, setActiveDocId }) => {
     const [mode, setMode] = useState<'CLASS' | 'TEACHER'>('CLASS');
     const [selectedId, setSelectedId] = useState<string>(CLASSES[0]); // Default to first class
 
     const handleDownload = (size: 'A4' | 'F4') => {
         if (mode === 'CLASS') {
-            exportSpecificClassPDF(schedule, selectedId, size, teachers);
+            // Fix: Swapped arguments to match (size, className, schedule, teachers)
+            exportSpecificClassPDF(size, selectedId, schedule, teachers);
         } else {
             const t = teachers.find(t => t.id.toString() === selectedId);
-            if (t) exportSpecificTeacherPDF(schedule, t, size, teachers);
+            // Fix: Swapped arguments to match (size, teacher, schedule, teachers)
+            if (t) exportSpecificTeacherPDF(size, t, schedule, teachers);
         }
     };
 
@@ -86,6 +92,35 @@ export const PerClassTeacherSchedule: React.FC<Props> = ({ schedule, teachers })
 
     return (
         <div className="bg-white rounded shadow p-6 min-h-[500px]">
+            {/* Document Selector */}
+            {documents && activeDocId && setActiveDocId && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded mb-6 flex flex-col md:flex-row justify-between items-center gap-4 no-print shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <label className="text-sm font-bold text-blue-900 uppercase">Sumber Jadwal:</label>
+                        <select 
+                            value={activeDocId}
+                            onChange={(e) => setActiveDocId(e.target.value)}
+                            className="border border-blue-300 rounded px-2 py-1 text-sm font-bold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {documents.map(doc => (
+                                <option key={doc.id} value={doc.id}>{doc.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="text-xs font-bold text-gray-600 flex gap-4">
+                        {(() => {
+                            const doc = documents.find(d => d.id === activeDocId);
+                            return doc ? (
+                                <>
+                                    <span>Semester: {doc.semester}</span>
+                                    <span>Tahun: {doc.academicYear}</span>
+                                </>
+                            ) : null;
+                        })()}
+                    </div>
+                </div>
+            )}
+
             {/* Header Controls */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b pb-4">
                 <div className="flex flex-col gap-3">
@@ -97,7 +132,7 @@ export const PerClassTeacherSchedule: React.FC<Props> = ({ schedule, teachers })
                             Per Kelas
                         </button>
                         <button 
-                            onClick={() => { setMode('TEACHER'); setSelectedId(teachers[0].id.toString()); }}
+                            onClick={() => { setMode('TEACHER'); setSelectedId(teachers[0]?.id.toString() || ''); }}
                             className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${mode === 'TEACHER' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             Per Guru

@@ -1,19 +1,23 @@
+
 import React from 'react';
-import { INITIAL_TEACHERS } from '../data';
-import { JPSplitConstraints, SplitOption } from '../types';
+import { JPSplitConstraints, SplitOption, Teacher, DutyDocument } from '../types';
 
 interface Props {
     settings: JPSplitConstraints;
     onUpdate: (code: string, options: SplitOption[]) => void;
+    teachers: Teacher[];
+    documents?: DutyDocument[];
+    activeDocId?: string;
+    setActiveDocId?: (id: string) => void;
 }
 
-export const JPDistributionTable: React.FC<Props> = ({ settings, onUpdate }) => {
+export const JPDistributionTable: React.FC<Props> = ({ settings, onUpdate, teachers, documents, activeDocId, setActiveDocId }) => {
     
     // Aggregate data: Subject Code -> { Subject Name, Hours }
     // Only care about max hours seen for a subject to determine available options
     const subjectStats: Record<string, {subject: string, maxHours: number}> = {};
 
-    INITIAL_TEACHERS.forEach(t => {
+    teachers.forEach(t => {
         t.subjects.forEach(s => {
              const max = Math.max(...(Object.values(s.load) as number[]) || [0]);
              if (!subjectStats[s.code] || max > subjectStats[s.code].maxHours) {
@@ -60,6 +64,35 @@ export const JPDistributionTable: React.FC<Props> = ({ settings, onUpdate }) => 
 
     return (
         <div className="bg-white p-6 shadow rounded overflow-x-auto">
+            {/* Document Selector */}
+            {documents && activeDocId && setActiveDocId && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded mb-6 flex flex-col md:flex-row justify-between items-center gap-4 no-print shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <label className="text-sm font-bold text-blue-900 uppercase">Sumber Data Guru:</label>
+                        <select 
+                            value={activeDocId}
+                            onChange={(e) => setActiveDocId(e.target.value)}
+                            className="border border-blue-300 rounded px-2 py-1 text-sm font-bold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {documents.map(doc => (
+                                <option key={doc.id} value={doc.id}>{doc.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="text-xs font-bold text-gray-600 flex gap-4">
+                        {(() => {
+                            const doc = documents.find(d => d.id === activeDocId);
+                            return doc ? (
+                                <>
+                                    <span>Semester: {doc.semester}</span>
+                                    <span>Tahun: {doc.academicYear}</span>
+                                </>
+                            ) : null;
+                        })()}
+                    </div>
+                </div>
+            )}
+
             <h2 className="text-xl font-bold mb-4 uppercase border-b pb-2">Setting Pembagian JP Per Mapel</h2>
             <p className="mb-4 text-sm text-gray-600">
                 Pilih konfigurasi pemecahan jam pelajaran. Anda bisa memilih <b>lebih dari satu opsi</b> (Checkbox). 

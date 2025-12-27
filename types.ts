@@ -53,6 +53,26 @@ export interface AdditionalTask {
     tasks: string;
 }
 
+// Data structure for SK Walas (Lampiran 5)
+export interface WalasEntry {
+    id: string;
+    name: string;
+    nip: string;
+    rank: string;
+    job: string;
+    className: string;
+}
+
+// Data structure for SK Ekskul (Lampiran 6)
+export interface EkskulEntry {
+    id: string;
+    name: string;
+    nip: string;
+    rank: string;
+    job: string;
+    ekskulName: string;
+}
+
 // New Interface for managing multiple SK Documents
 export interface SKDocument {
     id: string;
@@ -62,6 +82,43 @@ export interface SKDocument {
     semester: string; // e.g. "SEMESTER 1"
     academicYear: string; // e.g. "2025/2026"
     tasks: AdditionalTask[];
+}
+
+// Interface for Walas Document
+export interface WalasDocument {
+    id: string;
+    label: string;
+    skNumberCode: string;
+    skDateRaw: string;
+    semester: string;
+    academicYear: string;
+    entries: WalasEntry[];
+}
+
+// Interface for Ekskul Document
+export interface EkskulDocument {
+    id: string;
+    label: string;
+    skNumberCode: string;
+    skDateRaw: string;
+    semester: string;
+    academicYear: string;
+    entries: EkskulEntry[];
+}
+
+// Interface for Decision Letter (SK Pembagian Tugas)
+export interface DecisionDocument {
+    id: string;
+    label: string;
+    skNumberCode: string;
+    skDateRaw: string;
+    semester: string;
+    academicYear: string;
+    // New fields for editable content
+    menimbang?: string;
+    mengingat?: string[];
+    mengingatPula?: string[];
+    points?: string[];
 }
 
 // The generated schedule: DayIndex -> PeriodIndex -> ClassName -> CellData
@@ -111,4 +168,4 @@ export type SplitOption = '3+3' | '2+2+2' | '3+2' | '2+2' | '4' | '3' | '2' | '1
 export type JPSplitConstraints = Record<string, SplitOption[]>;
 
 // Navigation Tabs
-export type Tab = 'SCHEDULE' | 'EDIT_MANUAL' | 'DUTIES' | 'OFF_CODES' | 'JP_DIST' | 'PER_CLASS_TEACHER' | 'SK_DECISION' | 'SK_ADDITIONAL_TASK' | 'SK_TAS_TASK' | 'SETTINGS';
+export type Tab = 'SCHEDULE' | 'EDIT_MANUAL' | 'DUTIES' | 'OFF_CODES' | 'JP_DIST' | 'PER_CLASS_TEACHER' | 'SK_DECISION' | 'SK_ADDITIONAL_TASK' | 'SK_TAS_TASK' | 'SK_WALAS' | 'SK_EKSKUL' | 'SETTINGS';

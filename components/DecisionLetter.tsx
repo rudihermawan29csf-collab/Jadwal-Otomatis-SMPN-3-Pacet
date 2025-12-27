@@ -1,55 +1,259 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { exportDecisionPDF } from '../utils/exporter';
-import { SchoolConfig } from '../types';
+import { SchoolConfig, DecisionDocument } from '../types';
 
 interface Props {
+    documents: DecisionDocument[];
+    setDocuments: (docs: DecisionDocument[]) => void;
     schoolConfig: SchoolConfig;
 }
 
-export const DecisionLetter: React.FC<Props> = ({ schoolConfig }) => {
-    // SK Configuration State
-    const [skNumberCode, setSkNumberCode] = useState("1481.1");
-    const [skDateRaw, setSkDateRaw] = useState("2025-07-14");
+// Default values for initialization if document is empty
+const DEFAULT_MENIMBANG = "bahwa dalam rangka memperlancar pelaksanaan proses belajar mengajar di SMPN 3 Pacet Kabupaten Mojokerto {semester} Tahun Pelajaran {academicYear}, dipandang perlu menetapkan pembagian tugas guru.";
+const DEFAULT_MENGINGAT = [
+    "Undang-Undang RI Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;",
+    "Undang-Undang RI Nomor 14 Tahun 2005 Tentang Guru dan Dosen;",
+    "Peraturan Pemerintah Republik Indonesia Nomor 17 Tahun 2010 tentang Pengelolaan dan Penyelenggaraan Pendidikan sebagaimana telah diubah dengan Peraturan Pemerintah Nomor 66 tahun 2010 tentang Perubahan atas Peraturan Pemerintah Nomor 17 tahun 2010 tentang Pengelolaan dan Penyelenggaraan Pendidikan;",
+    "Peraturan Pemerintah Republik Indonesia Nomor: 04 Tahun 2022, tentang perubahan atas Peraturan Pemerintah Nomor: 57 Tahun 2021 tentang Standar Nasional Pendidikan (SNP);",
+    "Peraturan Menteri Pendidikan Nasional Nomor 19 Tahun 2007 tentang Standar Pengelolaan Pendidikan Oleh Satuan Pendidikan Dasar dan Menengah;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Nomor 58 tahun 2014 tentang Kurikulum 2013",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor: 61 Tahun 2014 tentang KTSP;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Nomor 62 tahun 2014 tentang Kegiatan ekstra kurikuler pada Pendidikan Dasar dan Pendidikan Menengah;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Nomor 63 tahun 2014 tentang Pendidikan Kepramukaan sebagai ekstrakurikuler wajib;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 111 Tahun 2014 tentang Bimbingan dan Konseling Pada Pendidikan Dasar dan Pendidikan Menengah;",
+    "Peraturan Menteri Negara Pemberdayaan Perempuan dan perlindungan anak republik Indonesia Nomor: 8 Tahun 2014 tentang Kebijakan Sekolah Ramah Anak. Keputusan Mentri",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 45 tahun 2015 tentang Perubahan Atas Peraturan Menteri Pendidikan Dan Kebudayaan Republik Indonesia Nomor 68 Tahun 2014 Tentang Peran Guru Teknologi Informasi Dan Komunikasi Dan Guru Keterampilan Komputer Dan Pengelolaan Informasi Dalam Implementasi Kurikulum 2013;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia nomor 24 tahun 2016 tentang Kompetensi Inti dan Kompetensi Dasar Pelajaran pada Kurikulum 2013 pada Pendidikan Dasar dan Menengah;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 23 tahun 2017 tentang Hari Sekolah;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 15 tahun 2018 tentang Pemenuhan Beban Kerja Guru, Kepala Sekolah, dan Pengawas Sekolah;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 35 tahun 2018 tentang Struktur Kurikulum;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 16 tahun 2019 tentang Penataan Linieritas Guru Bersertifikat Pendidik;",
+    "Peraturan Menteri Pendidikan dan Kebudayaan Nomor 62 Tahun 2013 tentang Sertifikasi Guru dalam Jabatan Dalam Rangka Penataan dan Pemerataan Guru;",
+    "Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 5 Tahun 2022 tentang Standar Kompetensi Lulusan Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;",
+    "Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 7 Tahun 2022 tentang Standar Isi Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;",
+    "Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 16 Tahun 2022 tentang Standar Proses Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;",
+    "Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 21 Tahun 2022 tentang Standar Penilaian Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;",
+    "Keputusan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 262/M/2022 tentang Perubahan Atas Keputusan Menteri Pendidikan, Kebudayaan, Riset dan Teknologi Republik Indonesia nomor: 56/M/2022 Tentang Pedoman Penerapan Kurikulum dalam Rangka Pemulihan Pembelajaran;",
+    "Peraturan Gubernur Jawa Timur No. 19 tahun 2014 tentang Bahasa Daerah sebagai Muatan Lokal Wajib di Sekolah/Madrasah;",
+    "Peraturan Daerah Kabupaten Mojokerto Nomor 6 Tahun 2007 tentang Penyelenggaraan Pendidikan."
+];
+const DEFAULT_MENGINGAT_PULA = [
+    "Keputusan Kepala Dinas Pendidikan Kabupaten Mojokerto Nomor: 188.4/039/416-101/2025, tentang Kalender Pendidikan bagi Satuan Pendidikan di Kabupaten Mojokerto Tahun Pelajaran {academicYear};",
+    "Program Kerja SMPN 3 Pacet Tahun Pelajaran {academicYear};",
+    "Hasil Rapat Dewan Guru SMPN 3 Pacet tanggal {formattedDate}."
+];
+const DEFAULT_POINTS = [
+    "Pembagian tugas guru dalam kegiatan proses belajar mengajar atau bimbingan dan konseling, seperti tersebut pada lampiran 1 surat keputusan ini;",
+    "Pembagian tugas tambahan bagi guru dan karyawan, seperti terlampir pada lampiran 2 surat keputusan ini;",
+    "Pembagian tugas dalam membimbing, seperti terlampir pada lampiran 3 surat keputusan ini;",
+    "Menugaskan guru untuk mengikuti kegiatan MGMP, seperti terlampir pada lampiran 4 surat keputusan ini;",
+    "Masing-masing guru melaporkan pelaksanaan tugasnya secara tertulis dan berkala kepada Kepala Sekolah;",
+    "Segala biaya yang timbul akibat pelaksanaan keputusan ini, dibebankan kepada anggaran yang sesuai;",
+    "Apabila terdapat kekeliruan dalam keputusan ini, akan dibetulkan sebagaimana mestinya.",
+    "Keputusan ini berlaku sejak tanggal ditetapkan."
+];
 
-    // Derived Values
-    const dateObj = new Date(skDateRaw);
+export const DecisionLetter: React.FC<Props> = ({ documents, setDocuments, schoolConfig }) => {
+    const [activeDocId, setActiveDocId] = useState<string>(documents[0]?.id || '1');
+    const [isEditContentMode, setIsEditContentMode] = useState(false);
+    
+    useEffect(() => {
+        if (documents.length > 0 && !documents.find(d => d.id === activeDocId)) {
+            setActiveDocId(documents[0].id);
+        }
+    }, [documents, activeDocId]);
+
+    const activeDoc = documents.find(d => d.id === activeDocId) || documents[0];
+    if (!activeDoc) return <div>Loading...</div>;
+
+    // Ensure doc has content fields (migration/init)
+    const initializeContent = () => {
+        if (activeDoc.menimbang) return; // already initialized
+        updateActiveDoc({
+            menimbang: DEFAULT_MENIMBANG,
+            mengingat: DEFAULT_MENGINGAT,
+            mengingatPula: DEFAULT_MENGINGAT_PULA,
+            points: DEFAULT_POINTS
+        });
+    };
+
+    const updateActiveDoc = (updates: Partial<DecisionDocument>) => {
+        const newDocs = documents.map(d => d.id === activeDoc.id ? { ...d, ...updates } : d);
+        setDocuments(newDocs);
+    };
+
+    const handleCreateNewDoc = () => {
+        const newId = Date.now().toString();
+        const newDoc: DecisionDocument = {
+            id: newId,
+            label: `SK Baru ${documents.length + 1}`,
+            skNumberCode: '1481.1',
+            skDateRaw: new Date().toISOString().split('T')[0],
+            semester: 'SEMESTER 1',
+            academicYear: '2025/2026',
+            menimbang: DEFAULT_MENIMBANG,
+            mengingat: DEFAULT_MENGINGAT,
+            mengingatPula: DEFAULT_MENGINGAT_PULA,
+            points: DEFAULT_POINTS
+        };
+        setDocuments([...documents, newDoc]);
+        setActiveDocId(newId);
+    };
+
+    const handleDuplicateDoc = () => {
+        const newId = Date.now().toString();
+        const newDoc: DecisionDocument = {
+            ...activeDoc,
+            id: newId,
+            label: `${activeDoc.label} (Salinan)`
+        };
+        setDocuments([...documents, newDoc]);
+        setActiveDocId(newId);
+        alert(`Berhasil menduplikasi "${activeDoc.label}"`);
+    };
+
+    const handleDeleteDoc = () => {
+        if (documents.length <= 1) return;
+        if (confirm(`Yakin ingin menghapus dokumen "${activeDoc.label}"?`)) {
+            const currentIndex = documents.findIndex(d => d.id === activeDoc.id);
+            const newDocs = documents.filter(d => d.id !== activeDoc.id);
+            const nextId = newDocs[currentIndex >= newDocs.length ? newDocs.length - 1 : currentIndex].id;
+            setActiveDocId(nextId);
+            setDocuments(newDocs);
+        }
+    };
+
+    const dateObj = new Date(activeDoc.skDateRaw);
     const year = dateObj.getFullYear();
     const formattedDate = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const fullSkNumber = `800/${skNumberCode}/416-101.68/${year}`;
+    const fullSkNumber = `800/${activeDoc.skNumberCode}/416-101.68/${year}`;
+
+    // Values with placeholders replaced
+    const renderText = (text: string) => {
+        return text
+            .replace(/{semester}/g, activeDoc.semester)
+            .replace(/{academicYear}/g, activeDoc.academicYear)
+            .replace(/{formattedDate}/g, formattedDate);
+    };
 
     const handleDownload = (size: 'A4' | 'F4') => {
-        exportDecisionPDF(size, fullSkNumber, formattedDate, schoolConfig);
+        // Pass dynamic content to exporter
+        exportDecisionPDF(
+            size, 
+            fullSkNumber, 
+            formattedDate, 
+            activeDoc.semester, 
+            activeDoc.academicYear, 
+            schoolConfig,
+            {
+                menimbang: renderText(activeDoc.menimbang || DEFAULT_MENIMBANG),
+                mengingat: (activeDoc.mengingat || DEFAULT_MENGINGAT).map(t => renderText(t)),
+                mengingatPula: (activeDoc.mengingatPula || DEFAULT_MENGINGAT_PULA).map(t => renderText(t)),
+                points: (activeDoc.points || DEFAULT_POINTS).map(t => renderText(t))
+            }
+        );
     };
 
     return (
         <div className="flex flex-col items-center">
-             {/* Configuration Panel (No Print) */}
-             <div className="w-full max-w-4xl bg-gray-100 p-4 rounded mb-4 border border-gray-300 shadow-inner no-print flex flex-wrap gap-4 items-end">
+            {/* Toolbar */}
+            <div className="w-full max-w-4xl bg-blue-50 p-4 rounded-t border-x border-t border-blue-200 no-print flex flex-wrap gap-2 justify-between items-center mb-0">
+                <div className="flex items-center gap-2">
+                    <label className="text-sm font-bold text-blue-900">Pilih Dokumen SK:</label>
+                    <select 
+                        value={activeDocId} 
+                        onChange={(e) => setActiveDocId(e.target.value)}
+                        className="border border-blue-300 rounded px-2 py-1 text-sm font-bold"
+                    >
+                        {documents.map(d => (
+                            <option key={d.id} value={d.id}>{d.label}</option>
+                        ))}
+                    </select>
+                    <button 
+                        onClick={() => { initializeContent(); setIsEditContentMode(!isEditContentMode); }}
+                        className={`px-3 py-1 rounded text-xs font-bold transition-colors ${isEditContentMode ? 'bg-orange-600 text-white' : 'bg-white border border-blue-300 text-blue-700'}`}
+                    >
+                        {isEditContentMode ? 'Selesai Edit' : 'Edit Isi Teks'}
+                    </button>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                     <button onClick={handleCreateNewDoc} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold">+ Baru</button>
+                    <button onClick={handleDuplicateDoc} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold">Duplikat</button>
+                    <button onClick={handleDeleteDoc} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold">Hapus</button>
+                </div>
+            </div>
+
+             {/* Meta Config */}
+             <div className="w-full max-w-4xl bg-gray-100 p-4 rounded-b mb-4 border border-gray-300 shadow-inner no-print flex flex-wrap gap-4 items-end">
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-gray-700">Nomor SK (Bagian Tengah)</label>
+                    <label className="text-xs font-bold text-gray-700">Label Internal</label>
+                    <input type="text" className="border p-1 rounded text-sm w-32" value={activeDoc.label} onChange={(e) => updateActiveDoc({ label: e.target.value })} />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-gray-700">Nomor SK</label>
                     <div className="flex items-center gap-1">
                         <span className="text-xs text-gray-500">800/</span>
-                        <input 
-                            type="text" 
-                            className="border p-1 rounded w-24 text-sm font-mono text-center"
-                            value={skNumberCode}
-                            onChange={(e) => setSkNumberCode(e.target.value)}
-                        />
-                        <span className="text-xs text-gray-500">/416-101.68/{year}</span>
+                        <input type="text" className="border p-1 rounded w-24 text-sm text-center" value={activeDoc.skNumberCode} onChange={(e) => updateActiveDoc({ skNumberCode: e.target.value })} />
                     </div>
                 </div>
                 <div className="flex flex-col gap-1">
                     <label className="text-xs font-bold text-gray-700">Tanggal SK</label>
-                    <input 
-                        type="date" 
-                        className="border p-1 rounded text-sm"
-                        value={skDateRaw}
-                        onChange={(e) => setSkDateRaw(e.target.value)}
-                    />
+                    <input type="date" className="border p-1 rounded text-sm" value={activeDoc.skDateRaw} onChange={(e) => updateActiveDoc({ skDateRaw: e.target.value })} />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-gray-700">Semester</label>
+                    <input type="text" className="border p-1 rounded text-sm w-32" value={activeDoc.semester} onChange={(e) => updateActiveDoc({ semester: e.target.value })} />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-gray-700">Tahun Pelajaran</label>
+                    <input type="text" className="border p-1 rounded text-sm w-32" value={activeDoc.academicYear} onChange={(e) => updateActiveDoc({ academicYear: e.target.value })} />
                 </div>
             </div>
 
+            {/* Editable Decree Body */}
+            {isEditContentMode && (
+                <div className="w-full max-w-4xl bg-orange-50 p-6 rounded mb-8 border-2 border-orange-200 no-print">
+                    <h3 className="font-bold text-orange-800 mb-4 border-b border-orange-200 pb-2 uppercase text-sm">Editor Isi SK (Legal Basis)</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold mb-1">MENIMBANG:</label>
+                            <textarea 
+                                className="w-full border p-2 text-sm rounded h-24" 
+                                value={activeDoc.menimbang || DEFAULT_MENIMBANG} 
+                                onChange={(e) => updateActiveDoc({ menimbang: e.target.value })} 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold mb-1">MENGINGAT (Pisahkan per baris):</label>
+                            <textarea 
+                                className="w-full border p-2 text-sm rounded h-48" 
+                                value={(activeDoc.mengingat || DEFAULT_MENGINGAT).join('\n')} 
+                                onChange={(e) => updateActiveDoc({ mengingat: e.target.value.split('\n') })} 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold mb-1">MENGINGAT PULA (Pisahkan per baris):</label>
+                            <textarea 
+                                className="w-full border p-2 text-sm rounded h-32" 
+                                value={(activeDoc.mengingatPula || DEFAULT_MENGINGAT_PULA).join('\n')} 
+                                onChange={(e) => updateActiveDoc({ mengingatPula: e.target.value.split('\n') })} 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold mb-1">MEMUTUSKAN - DIKTUM PERTAMA s/d KEDELAPAN (8 baris):</label>
+                            <textarea 
+                                className="w-full border p-2 text-sm rounded h-48" 
+                                value={(activeDoc.points || DEFAULT_POINTS).join('\n')} 
+                                onChange={(e) => updateActiveDoc({ points: e.target.value.split('\n') })} 
+                            />
+                        </div>
+                        <p className="text-[10px] text-orange-700 italic">* Gunakan kode <b>{"{semester}"}</b>, <b>{"{academicYear}"}</b>, <b>{"{formattedDate}"}</b> agar teks berubah otomatis mengikuti pengaturan di atas.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Decree Preview */}
             <div className="w-full max-w-4xl bg-white shadow-2xl p-12 mb-8 font-serif text-gray-900 border border-gray-200 print:shadow-none print:border-none print:p-0">
                 {/* Header */}
                 <div className="text-center mb-8 border-b-4 border-double border-black pb-4">
@@ -59,8 +263,8 @@ export const DecisionLetter: React.FC<Props> = ({ schoolConfig }) => {
                     <p className="italic font-bold mt-4">Tentang :</p>
                     <h3 className="text-lg font-bold uppercase mt-2">
                         Pembagian Tugas Guru dalam Kegiatan Belajar Mengajar<br/>
-                        dan/atau Bimbingan dan Konseling Semester 1<br/>
-                        Tahun Pelajaran 2025/2026
+                        dan/atau Bimbingan dan Konseling {activeDoc.semester}<br/>
+                        Tahun Pelajaran {activeDoc.academicYear}
                     </h3>
                 </div>
 
@@ -68,13 +272,13 @@ export const DecisionLetter: React.FC<Props> = ({ schoolConfig }) => {
                     <p className="font-bold">Kepala SMPN 3 Pacet, Kabupaten Mojokerto, Provinsi Jawa Timur</p>
                 </div>
 
-                {/* Content Sections */}
+                {/* Decree Content */}
                 <div className="space-y-4 text-[13px] leading-relaxed text-justify">
                     <div className="flex gap-4">
                         <div className="w-24 font-bold shrink-0">Menimbang</div>
                         <div className="flex gap-2">
                             <span>:</span>
-                            <p>bahwa dalam rangka memperlancar pelaksanaan proses belajar mengajar di SMPN 3 Pacet Kabupaten Mojokerto Semester 1 Tahun Pelajaran 2025/2026, dipandang perlu menetapkan pembagian tugas guru.</p>
+                            <p>{renderText(activeDoc.menimbang || DEFAULT_MENIMBANG)}</p>
                         </div>
                     </div>
 
@@ -83,31 +287,7 @@ export const DecisionLetter: React.FC<Props> = ({ schoolConfig }) => {
                         <div className="flex gap-2">
                             <span>:</span>
                             <ol className="list-decimal pl-4 space-y-0.5">
-                                <li>Undang-Undang RI Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional;</li>
-                                <li>Undang-Undang RI Nomor 14 Tahun 2005 Tentang Guru dan Dosen;</li>
-                                <li>Peraturan Pemerintah Republik Indonesia Nomor 17 Tahun 2010 tentang Pengelolaan dan Penyelenggaraan Pendidikan sebagaimana telah diubah dengan Peraturan Pemerintah Nomor 66 tahun 2010 tentang Perubahan atas Peraturan Pemerintah Nomor 17 tahun 2010 tentang Pengelolaan dan Penyelenggaraan Pendidikan;</li>
-                                <li>Peraturan Pemerintah Republik Indonesia Nomor: 04 Tahun 2022, tentang perubahan atas Peraturan Pemerintah Nomor: 57 Tahun 2021 tentang Standar Nasional Pendidikan (SNP);</li>
-                                <li>Peraturan Menteri Pendidikan Nasional Nomor 19 Tahun 2007 tentang Standar Pengelolaan Pendidikan Oleh Satuan Pendidikan Dasar dan Menengah;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Nomor 58 tahun 2014 tentang Kurikulum 2013</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor: 61 Tahun 2014 tentang KTSP;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Nomor 62 tahun 2014 tentang Kegiatan ekstra kurikuler pada Pendidikan Dasar dan Pendidikan Menengah;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Nomor 63 tahun 2014 tentang Pendidikan Kepramukaan sebagai ekstrakurikuler wajib;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 111 Tahun 2014 tentang Bimbingan dan Konseling Pada Pendidikan Dasar dan Pendidikan Menengah;</li>
-                                <li>Peraturan Menteri Negara Pemberdayaan Perempuan dan perlindungan anak republik Indonesia Nomor: 8 Tahun 2014 tentang Kebijakan Sekolah Ramah Anak. Keputusan Mentri</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 45 tahun 2015 tentang Perubahan Atas Peraturan Menteri Pendidikan Dan Kebudayaan Republik Indonesia Nomor 68 Tahun 2014 Tentang Peran Guru Teknologi Informasi Dan Komunikasi Dan Guru Keterampilan Komputer Dan Pengelolaan Informasi Dalam Implementasi Kurikulum 2013;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia nomor 24 tahun 2016 tentang Kompetensi Inti dan Kompetensi Dasar Pelajaran pada Kurikulum 2013 pada Pendidikan Dasar dan Menengah;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 23 tahun 2017 tentang Hari Sekolah;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 15 tahun 2018 tentang Pemenuhan Beban Kerja Guru, Kepala Sekolah, dan Pengawas Sekolah;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 35 tahun 2018 tentang Struktur Kurikulum;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Republik Indonesia Nomor 16 tahun 2019 tentang Penataan Linieritas Guru Bersertifikat Pendidik;</li>
-                                <li>Peraturan Menteri Pendidikan dan Kebudayaan Nomor 62 Tahun 2013 tentang Sertifikasi Guru dalam Jabatan Dalam Rangka Penataan dan Pemerataan Guru;</li>
-                                <li>Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 5 Tahun 2022 tentang Standar Kompetensi Lulusan Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;</li>
-                                <li>Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 7 Tahun 2022 tentang Standar Isi Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;</li>
-                                <li>Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 16 Tahun 2022 tentang Standar Proses Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;</li>
-                                <li>Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 21 Tahun 2022 tentang Standar Penilaian Pada Pendidikan Anak Usia Dini, Jenjang Pendidikan Dasar, dan Jenjang Pendidikan Menengah;</li>
-                                <li>Keputusan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Republik Indonesia Nomor: 262/M/2022 tentang Perubahan Atas Keputusan Menteri Pendidikan, Kebudayaan, Riset dan Teknologi Republik Indonesia nomor: 56/M/2022 Tentang Pedoman Penerapan Kurikulum dalam Rangka Pemulihan Pembelajaran;</li>
-                                <li>Peraturan Gubernur Jawa Timur No. 19 tahun 2014 tentang Bahasa Daerah sebagai Muatan Lokal Wajib di Sekolah/Madrasah;</li>
-                                <li>Peraturan Daerah Kabupaten Mojokerto Nomor 6 Tahun 2007 tentang Penyelenggaraan Pendidikan.</li>
+                                {(activeDoc.mengingat || DEFAULT_MENGINGAT).map((t, i) => <li key={i}>{renderText(t)}</li>)}
                             </ol>
                         </div>
                     </div>
@@ -117,9 +297,7 @@ export const DecisionLetter: React.FC<Props> = ({ schoolConfig }) => {
                         <div className="flex gap-2">
                             <span>:</span>
                             <ol className="list-decimal pl-4 space-y-0.5">
-                                <li>Keputusan Kepala Dinas Pendidikan Kabupaten Mojokerto Nomor: 188.4/039/416-101/2025, tentang Kalender Pendidikan bagi Satuan Pendidikan di Kabupaten Mojokerto Tahun Pelajaran 2025/2026;</li>
-                                <li>Program Kerja SMPN 3 Pacet Tahun Pelajaran 2025/2026;</li>
-                                <li>Hasil Rapat Dewan Guru SMPN 3 Pacet tanggal {formattedDate}.</li>
+                                {(activeDoc.mengingatPula || DEFAULT_MENGINGAT_PULA).map((t, i) => <li key={i}>{renderText(t)}</li>)}
                             </ol>
                         </div>
                     </div>
@@ -133,62 +311,15 @@ export const DecisionLetter: React.FC<Props> = ({ schoolConfig }) => {
                             <div className="w-24 font-bold shrink-0">Menetapkan</div>
                             <div className="font-bold">:</div>
                         </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Pertama</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Pembagian tugas guru dalam kegiatan proses belajar mengajar atau bimbingan dan konseling, seperti tersebut pada lampiran 1 surat keputusan ini;</p>
+                        {['Pertama', 'Kedua', 'Ketiga', 'Keempat', 'Kelima', 'Keenam', 'Ketujuh', 'Kedelapan'].map((label, idx) => (
+                            <div className="flex gap-4" key={label}>
+                                <div className="w-24 font-bold shrink-0">{label}</div>
+                                <div className="flex gap-2">
+                                    <span>:</span>
+                                    <p>{renderText((activeDoc.points || DEFAULT_POINTS)[idx] || '-')}</p>
+                                </div>
                             </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Kedua</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Pembagian tugas tambahan bagi guru dan karyawan, seperti terlampir pada lampiran 2 surat keputusan ini;</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Ketiga</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Pembagian tugas dalam membimbing, seperti terlampir pada lampiran 3 surat keputusan ini;</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Keempat</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Menugaskan guru untuk mengikuti kegiatan MGMP, seperti terlampir pada lampiran 4 surat keputusan ini;</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Kelima</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Masing-masing guru melaporkan pelaksanaan tugasnya secara tertulis dan berkala kepada Kepala Sekolah;</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Keenam</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Segala biaya yang timbul akibat pelaksanaan keputusan ini, dibebankan kepada anggaran yang sesuai;</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Ketujuh</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Apabila terdapat kekeliruan dalam keputusan ini, akan dibetulkan sebagaimana mestinya.</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-24 font-bold shrink-0">Kedelapan</div>
-                            <div className="flex gap-2">
-                                <span>:</span>
-                                <p>Keputusan ini berlaku sejak tanggal ditetapkan.</p>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
 
@@ -200,52 +331,26 @@ export const DecisionLetter: React.FC<Props> = ({ schoolConfig }) => {
                                 <tr><td className="w-24">Ditetapkan di</td><td>: Mojokerto</td></tr>
                                 <tr><td>Pada tanggal</td><td>: {formattedDate}</td></tr>
                                 <tr className="border-b border-black"><td colSpan={2} className="pt-2"></td></tr>
-                                <tr><td colSpan={2} className="pt-2">Kepala SMPN 3 Pacet</td></tr>
+                                <tr><td colSpan={2} className="pt-2 text-center">Kepala SMPN 3 Pacet</td></tr>
                                 <tr>
-                                    <td colSpan={2} className="py-10 relative">
-                                        <div className="absolute top-1/2 left-0 -translate-y-1/2 opacity-20 rotate-[-15deg] select-none pointer-events-none">
-                                            <div className="border-4 border-blue-800 text-blue-800 p-2 rounded-full font-bold text-[10px] uppercase text-center w-28 h-28 flex items-center justify-center">
-                                                Stempel SMPN 3 PACET
-                                            </div>
-                                        </div>
-                                    </td>
+                                    <td colSpan={2} className="py-10"></td>
                                 </tr>
                                 <tr>
-                                    <td colSpan={2} className="font-bold underline uppercase">{schoolConfig.principalName}</td>
+                                    <td colSpan={2} className="font-bold underline uppercase text-center">{schoolConfig.principalName}</td>
                                 </tr>
                                 <tr>
-                                    <td colSpan={2}>NIP. {schoolConfig.principalNip}</td>
+                                    <td colSpan={2} className="text-center">NIP. {schoolConfig.principalNip}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-
-                {/* Footer Copy Recipients */}
-                <div className="mt-8 pt-4 border-t border-gray-300 text-[11px]">
-                    <p className="font-bold underline">Tembusan Kepada Yth. :</p>
-                    <ol className="list-decimal pl-4">
-                        <li>Kepala Dinas Pendidikan Kabupaten Mojokerto di Mojokerto</li>
-                        <li>Yang bersangkutan untuk dilaksanakan sebagaimana mestinya.</li>
-                    </ol>
-                </div>
             </div>
 
-            {/* Controls */}
+            {/* Export Buttons */}
             <div className="no-print flex gap-4 mb-12">
-                <button 
-                    onClick={() => handleDownload('A4')}
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/><path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.192-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.54-.094.137-.098.286-.065.37.027.069.112.152.315.172.067.007.136-.007.202-.038.14-.065.294-.175.449-.33.167-.168.318-.363.447-.57zM8.532 4.65c.032-.003.076.02.098.062.039.076.046.19.03.32-.016.146-.064.306-.118.467-.044.132-.102.264-.176.39-.102.164-.204.302-.276.366-.08.068-.18.1-.256.095-.067-.004-.103-.027-.122-.05-.054-.066-.073-.172-.055-.295.018-.124.058-.27.114-.41.11-.266.244-.486.39-.618.064-.057.144-.09.215-.095zm3.504 7.64c.092-.08.16-.174.194-.282.035-.11.026-.226.012-.321-.016-.108-.057-.224-.123-.335-.118-.198-.327-.376-.607-.497-.323-.14-.68-.202-1.01-.202-.088 0-.173.007-.253.02-.132.02-.257.06-.364.123a10.456 10.456 0 0 0-.423.28c.36.262.748.497 1.15.688.134.064.28.113.424.134.108.016.216.002.318-.046.079-.037.155-.093.228-.184l-.547-.282zm-4.27-2.925c-.218.617-.48 1.139-.738 1.488.35-.11.75-.248 1.16-.395.035-.013.065-.03.095-.044.492-.224.96-.519 1.362-.872a11.1 11.1 0 0 1-1.88-.177z"/></svg>
-                    CETAK SK (PDF A4)
-                </button>
-                <button 
-                    onClick={() => handleDownload('F4')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105"
-                >
-                    CETAK SK (PDF F4)
-                </button>
+                <button onClick={() => handleDownload('A4')} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105">PDF A4</button>
+                <button onClick={() => handleDownload('F4')} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105">PDF F4</button>
             </div>
         </div>
     );

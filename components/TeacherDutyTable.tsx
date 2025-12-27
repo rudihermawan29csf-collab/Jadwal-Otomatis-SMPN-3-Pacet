@@ -104,19 +104,19 @@ export const TeacherDutyTable: React.FC<Props> = ({
           const newDocs = documents.filter(d => d.id !== activeDocId);
           
           // 3. Determine the new active ID
-          // Try to keep the same index, or go to the previous one if we deleted the last item
           let nextIndex = 0;
           if (newDocs.length > 0) {
-              if (currentIndex < newDocs.length) {
-                  nextIndex = currentIndex; // Take the item that slid into this slot
+              // If we deleted the last item, go to the previous one (which is now the last)
+              // If we deleted an item in the middle, index stays same (which is now the next item)
+              if (currentIndex >= newDocs.length) {
+                  nextIndex = newDocs.length - 1;
               } else {
-                  nextIndex = newDocs.length - 1; // Take the last item
+                  nextIndex = currentIndex;
               }
           }
           const nextId = newDocs[nextIndex].id;
 
-          // 4. Update the selection FIRST (so App loads the data from the remaining list)
-          // Note: App's handleSwitchDoc looks at existing state, so we pick an ID that exists in both old and new lists (the survivor)
+          // 4. Update the selection FIRST
           setActiveDocId(nextId);
 
           // 5. Update the list state
@@ -347,6 +347,7 @@ export const TeacherDutyTable: React.FC<Props> = ({
                         Duplikat
                     </button>
                     <button 
+                        type="button"
                         onClick={handleDeleteDoc}
                         className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1"
                     >

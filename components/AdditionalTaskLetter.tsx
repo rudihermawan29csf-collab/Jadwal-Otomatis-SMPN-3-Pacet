@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { exportAdditionalTaskPDF, exportAdditionalTaskWord } from '../utils/exporter';
 import { AdditionalTask, Teacher, SKDocument, SchoolConfig } from '../types';
 
@@ -16,7 +16,14 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<AdditionalTask | null>(null);
     
-    // Fallback if the activeDocId no longer exists (e.g. was just deleted via props update, although we handle it locally below)
+    // Safety check: Ensure activeDocId points to an existing doc, if not reset to first
+    useEffect(() => {
+        if (documents.length > 0 && !documents.find(d => d.id === activeDocId)) {
+            setActiveDocId(documents[0].id);
+        }
+    }, [documents, activeDocId]);
+
+    // Fallback if the activeDocId no longer exists
     const activeDoc = documents.find(d => d.id === activeDocId) || documents[0];
     
     // Safety check if no documents exist (shouldn't happen with init logic but safe to handle)
@@ -69,25 +76,26 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
         }
         
         if (confirm(`Yakin ingin menghapus dokumen "${activeDoc.label}"?\n\nPERINGATAN: Data yang dihapus tidak dapat dikembalikan.`)) {
-            // 1. Determine index
+            // 1. Determine index of current doc
             const currentIndex = documents.findIndex(d => d.id === activeDoc.id);
             
-            // 2. Filter list
+            // 2. Filter list to remove current doc
             const newDocs = documents.filter(d => d.id !== activeDoc.id);
             
-            // 3. Determine next ID
+            // 3. Determine next ID to select
             let nextIndex = 0;
             if (newDocs.length > 0) {
-                if (currentIndex < newDocs.length) {
-                    nextIndex = currentIndex;
-                } else {
+                // If we deleted the last item, go to the new last item
+                // Otherwise keep the same index (which is now the next item)
+                if (currentIndex >= newDocs.length) {
                     nextIndex = newDocs.length - 1;
+                } else {
+                    nextIndex = currentIndex;
                 }
             }
             const nextId = newDocs[nextIndex].id;
 
-            // 4. Update state (both local active ID and parent list)
-            // Note: We set the active ID immediately so the UI doesn't try to render the deleted item
+            // 4. Update state
             setActiveDocId(nextId);
             setDocuments(newDocs);
         }
@@ -212,6 +220,7 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
                         Duplikat SK Ini
                     </button>
                     <button 
+                        type="button"
                         onClick={handleDeleteDoc}
                         className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1"
                     >
@@ -279,16 +288,16 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
             <div className="w-full max-w-4xl bg-white shadow-2xl p-10 mb-8 font-sans text-gray-900 border border-gray-200 print:shadow-none print:border-none print:p-0">
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-10">
-                    {/* Logo Removed as per request */}
+                    {/* Logo Area */}
                     <div className="w-24 shrink-0"></div>
 
-                    {/* Header Info - Reduced Font Size to 8px */}
-                    <div className="flex justify-end text-[8px]">
-                        <table className="w-64">
+                    {/* Header Info - Font Size reduced to 8px */}
+                    <div className="flex justify-end text-[8px] leading-tight">
+                        <table className="w-64 border-none">
                             <tbody>
-                                <tr><td className="align-top">Lampiran 2.</td><td className="align-top">: Keputusan Kepala SMPN 3 Pacet</td></tr>
-                                <tr><td className="align-top">Nomor</td><td className="align-top">: {fullSkNumber}</td></tr>
-                                <tr><td className="align-top">Tanggal</td><td className="align-top">: {formattedDate}</td></tr>
+                                <tr className="border-none"><td className="align-top border-none p-0 w-20">Lampiran 2.</td><td className="align-top border-none p-0">: Keputusan Kepala SMPN 3 Pacet</td></tr>
+                                <tr className="border-none"><td className="align-top border-none p-0">Nomor</td><td className="align-top border-none p-0">: {fullSkNumber}</td></tr>
+                                <tr className="border-none"><td className="align-top border-none p-0">Tanggal</td><td className="align-top border-none p-0">: {formattedDate}</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -411,7 +420,7 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
                                                     className="bg-gray-500 hover:bg-gray-600 text-white p-1 rounded disabled:opacity-30"
                                                     title="Turun"
                                                 >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>
                                                 </button>
                                             </div>
                                             <button onClick={() => handleEdit(row)} className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] hover:bg-blue-700">Edit</button>
@@ -460,13 +469,13 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
                     className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/><path d="M4.603 14.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 0 0 1 1.482-.645 19.697 19.697 0 0 0 1.062-2.227 7.269 7.269 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.192-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.712 5.712 0 0 1-.911-.95 11.651 11.651 0 0 0-1.997.406 11.307 11.307 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.793.793 0 0 1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.54-.094.137-.098.286-.065.37.027.069.112.152.315.172.067.007.136-.007.202-.038.14-.065.294-.175.449-.33.167-.168.318-.363.447-.57zM8.532 4.65c.032-.003.076.02.098.062.039.076.046.19.03.32-.016.146-.064.306-.118.467-.044.132-.102.264-.176.39-.102.164-.204.302-.276.366-.08.068-.18.1-.256.095-.067-.004-.103-.027-.122-.05-.054-.066-.073-.172-.055-.295.018-.124.058-.27.114-.41.11-.266.244-.486.39-.618.064-.057.144-.09.215-.095zm3.504 7.64c.092-.08.16-.174.194-.282.035-.11.026-.226.012-.321-.016-.108-.057-.224-.123-.335-.118-.198-.327-.376-.607-.497-.323-.14-.68-.202-1.01-.202-.088 0-.173.007-.253.02-.132.02-.257.06-.364.123a10.456 10.456 0 0 0-.423.28c.36.262.748.497 1.15.688.134.064.28.113.424.134.108.016.216.002.318-.046.079-.037.155-.093.228-.184l-.547-.282zm-4.27-2.925c-.218.617-.48 1.139-.738 1.488.35-.11.75-.248 1.16-.395.035-.013.065-.03.095-.044.492-.224.96-.519 1.362-.872a11.1 11.1 0 0 1-1.88-.177z"/></svg>
-                    CETAK (PDF A4)
+                    CETAK SK (PDF A4)
                 </button>
                 <button 
                     onClick={() => handleDownload('PDF_F4')}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105"
                 >
-                    CETAK (PDF F4)
+                    CETAK SK (PDF F4)
                 </button>
                 <button 
                     onClick={() => handleDownload('WORD')}

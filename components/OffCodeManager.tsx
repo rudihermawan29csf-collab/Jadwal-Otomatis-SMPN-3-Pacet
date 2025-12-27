@@ -1,14 +1,18 @@
+
 import React, { useState } from 'react';
 import { TIME_STRUCTURE } from '../data';
-import { OffDayConstraints, Teacher } from '../types';
+import { OffDayConstraints, Teacher, DutyDocument } from '../types';
 
 interface Props {
     teachers: Teacher[];
     constraints: OffDayConstraints;
     onChange: (newConstraints: OffDayConstraints) => void;
+    documents?: DutyDocument[];
+    activeDocId?: string;
+    setActiveDocId?: (id: string) => void;
 }
 
-export const OffCodeManager: React.FC<Props> = ({ teachers, constraints, onChange }) => {
+export const OffCodeManager: React.FC<Props> = ({ teachers, constraints, onChange, documents, activeDocId, setActiveDocId }) => {
     const [mode, setMode] = useState<'DAY' | 'HOUR'>('DAY');
     const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
@@ -67,6 +71,35 @@ export const OffCodeManager: React.FC<Props> = ({ teachers, constraints, onChang
 
     return (
         <div className="bg-white p-6 shadow rounded">
+             {/* Document Selector */}
+             {documents && activeDocId && setActiveDocId && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded mb-6 flex flex-col md:flex-row justify-between items-center gap-4 no-print shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <label className="text-sm font-bold text-blue-900 uppercase">Sumber Data Guru:</label>
+                        <select 
+                            value={activeDocId}
+                            onChange={(e) => setActiveDocId(e.target.value)}
+                            className="border border-blue-300 rounded px-2 py-1 text-sm font-bold bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            {documents.map(doc => (
+                                <option key={doc.id} value={doc.id}>{doc.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="text-xs font-bold text-gray-600 flex gap-4">
+                        {(() => {
+                            const doc = documents.find(d => d.id === activeDocId);
+                            return doc ? (
+                                <>
+                                    <span>Semester: {doc.semester}</span>
+                                    <span>Tahun: {doc.academicYear}</span>
+                                </>
+                            ) : null;
+                        })()}
+                    </div>
+                </div>
+            )}
+
              <h2 className="text-xl font-bold mb-4 uppercase border-b pb-2">Pengaturan Libur Kode Mapel (Off Days/Hours)</h2>
              
              {/* Mode Selector */}
