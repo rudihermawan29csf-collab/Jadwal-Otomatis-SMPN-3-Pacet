@@ -1,16 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { exportAdditionalTaskPDF, exportAdditionalTaskWord } from '../utils/exporter';
-import { AdditionalTask, Teacher, SKDocument, SchoolConfig } from '../types';
+import { AdditionalTask, Teacher, SKDocument, SchoolConfig, DutyDocument } from '../types';
 
 interface Props {
     documents: SKDocument[];
     setDocuments: (docs: SKDocument[]) => void;
     teachers: Teacher[];
     schoolConfig: SchoolConfig;
+    // New props for source data selection
+    dutyDocuments?: DutyDocument[];
+    activeDutyDocId?: string;
+    onSwitchDutyDoc?: (id: string) => void;
 }
 
-export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments, teachers, schoolConfig }) => {
+export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments, teachers, schoolConfig, dutyDocuments, activeDutyDocId, onSwitchDutyDoc }) => {
     // Determine active document
     const [activeDocId, setActiveDocId] = useState<string>(documents[0]?.id || '1');
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -75,7 +79,7 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
             return;
         }
         
-        if (confirm(`Yakin ingin menghapus dokumen "${activeDoc.label}"?\n\nPERINGATAN: Data yang dihapus tidak dapat dikembalikan.`)) {
+        if (confirm(`Yakin ingin menghapus dokumen "${activeDoc.label}"?`)) {
             // 1. Determine index of current doc
             const currentIndex = documents.findIndex(d => d.id === activeDoc.id);
             
@@ -190,6 +194,25 @@ export const AdditionalTaskLetter: React.FC<Props> = ({ documents, setDocuments,
 
     return (
         <div className="flex flex-col items-center">
+            {/* BILAH SUMBER DATA TUGAS GURU */}
+            {dutyDocuments && onSwitchDutyDoc && (
+                <div className="w-full max-w-4xl bg-blue-600 text-white p-3 rounded mb-4 flex justify-between items-center no-print shadow-md">
+                    <div className="flex items-center gap-3">
+                        <label className="text-xs font-bold uppercase">Sumber Data Guru:</label>
+                        <select 
+                            value={activeDutyDocId} 
+                            onChange={(e) => onSwitchDutyDoc(e.target.value)}
+                            className="bg-blue-700 border border-blue-400 rounded px-2 py-1 text-xs font-bold outline-none"
+                        >
+                            {dutyDocuments.map(doc => (
+                                <option key={doc.id} value={doc.id}>{doc.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <span className="text-[10px] italic">* Memilih versi data guru untuk dropdown pemilihan nama.</span>
+                </div>
+            )}
+
             {/* Document Switcher Toolbar */}
             <div className="w-full max-w-4xl bg-blue-50 p-4 rounded-t border-x border-t border-blue-200 no-print flex flex-wrap gap-2 justify-between items-center mb-0">
                 <div className="flex items-center gap-2">

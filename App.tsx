@@ -47,7 +47,6 @@ const App: React.FC = () => {
   const teachers = activeDutyDoc?.teachers || [];
 
   // Sync Schedule State -> Active Duty Document
-  // Whenever `schedule` changes, update the document in the list
   useEffect(() => {
       if (!schedule) return;
       setDutyDocuments(prev => prev.map(doc => {
@@ -58,7 +57,6 @@ const App: React.FC = () => {
       }));
   }, [schedule, activeDutyDocId]);
 
-  // Wrapper to update teachers in the active document (for child components)
   const setTeachers = (newTeachers: Teacher[]) => {
       setDutyDocuments(docs => docs.map(d => d.id === activeDutyDocId ? { ...d, teachers: newTeachers } : d));
   };
@@ -118,20 +116,14 @@ const App: React.FC = () => {
           skDateRaw: '2025-08-11',
           semester: 'SEMESTER 1',
           academicYear: '2025/2026',
-          entries: [
-              { id: '1', name: 'Rudi Hermawan, S.Pd', nip: '19891029 202012 1 003', rank: 'Penata Muda/III a', job: 'Guru Pertama', subject: 'Pendidikan Agama Islam' },
-              { id: '2', name: 'Dra. Sri Hayati', nip: '19670628 200801 2 006', rank: 'Penata Tk.I/III d', job: 'Guru Muda', subject: 'Bahasa Indonesia' },
-              { id: '3', name: 'Retno Nawangwulan, S. Pd.', nip: '1985070320252120006', rank: 'Ahli Pertama / IX', job: 'Guru Pertama', subject: 'Bahasa Inggris' },
-              { id: '4', name: 'Purnadi, S.Pd.', nip: '19680705 202421 1 001', rank: 'Ahli Pertama / IX', job: 'Guru', subject: 'Matematika' },
-              { id: '5', name: 'Rebby Dwi Prataopu, S.Si', nip: '-', rank: 'GTT', job: 'Guru', subject: 'Ilmu Pengetahuan Alam' },
-              { id: '6', name: 'Israfin Maria Ulfa, S.Pd', nip: '198501312025212004', rank: 'Ahli Pertama / IX', job: 'Guru Muda', subject: 'Ilmu Pengetahuan Sosial' },
-              { id: '7', name: 'Moch. Husain Rifai Hamzah, S.Pd.', nip: '19920316 202012 1 011', rank: 'Penata Muda Tk I /III b', job: 'Guru Pertama', subject: 'Penjasorkes' },
-              { id: '8', name: 'Akhmad Hariadi, S.Pd', nip: '19751108 200901 1 001', rank: 'Penata Muda Tk I / III b', job: 'Guru Pertama', subject: 'Informatika' },
-              { id: '9', name: 'Eka Hariyati, S. Pd.', nip: '19731129 202421 2 003', rank: 'Ahli Pertama / IX', job: 'Guru', subject: 'Pendidikan Pancasila' },
-              { id: '10', name: 'Fakhita Madury, S.Sn', nip: '-', rank: 'GTT', job: 'Guru', subject: 'Seni (Seni Rupa)' },
-              { id: '11', name: 'Mikoe Wahyudi Putra, ST., S. Pd.', nip: '19820222 202421 1 004', rank: 'Ahli Pertama / IX', job: 'Guru', subject: 'Bahasa Jawa' },
-              { id: '12', name: 'Okha Devi Anggraini, S.Pd.', nip: '19941002 202012 2 008', rank: 'Penata Muda/III a', job: 'Guru Pertama', subject: 'BK' }
-          ]
+          entries: INITIAL_ADDITIONAL_TASKS.map((t, idx) => ({
+              id: String(idx),
+              name: t.name,
+              nip: t.nip,
+              rank: t.rank,
+              job: t.job,
+              subject: '-'
+          }))
       }
   ]);
   
@@ -150,8 +142,6 @@ const App: React.FC = () => {
   // Schedule Filters
   const [filterType, setFilterType] = useState<'CLASS' | 'TEACHER'>('CLASS');
   const [filterValue, setFilterValue] = useState<string[]>(['ALL']);
-  const [isMultiSelectOpen, setIsMultiSelectOpen] = useState(false);
-  const multiSelectRef = useRef<HTMLDivElement>(null);
 
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -163,14 +153,15 @@ const App: React.FC = () => {
   const [isSkTabOpen, setIsSkTabOpen] = useState(false);
   const skTabRef = useRef<HTMLDivElement>(null);
 
+  const [isSettingsTabOpen, setIsSettingsTabOpen] = useState(false);
+  const settingsTabRef = useRef<HTMLDivElement>(null);
+
   // Initial Initialization & Load Data
   useEffect(() => {
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
         try {
             const parsed = JSON.parse(savedData);
-            
-            // Handle Duty Documents Migration
             let loadedDocs: DutyDocument[] = [];
             if (parsed.teachers && (!parsed.dutyDocuments || parsed.dutyDocuments.length === 0)) {
                 loadedDocs = [{
@@ -198,20 +189,16 @@ const App: React.FC = () => {
                     schedule: createEmptySchedule()
                 }];
             }
-            
             setDutyDocuments(loadedDocs);
             const activeId = parsed.activeDutyDocId || '1';
             setActiveDutyDocId(activeId);
             const activeDoc = loadedDocs.find(d => d.id === activeId) || loadedDocs[0];
             setSchedule(activeDoc.schedule);
-
-            // SK Migrations
             if (parsed.skDocuments) setSkDocuments(parsed.skDocuments);
             if (parsed.decisionDocuments) setDecisionDocuments(parsed.decisionDocuments);
             if (parsed.walasDocuments) setWalasDocuments(parsed.walasDocuments);
             if (parsed.ekskulDocuments) setEkskulDocuments(parsed.ekskulDocuments);
             if (parsed.mgmpDocuments) setMgmpDocuments(parsed.mgmpDocuments);
-
             if (parsed.schoolConfig) setSchoolConfig(parsed.schoolConfig);
             if (parsed.offConstraints) setOffConstraints(parsed.offConstraints);
             if (parsed.jpSplitSettings) setJpSplitSettings(parsed.jpSplitSettings);
@@ -225,13 +212,11 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Save Data Function
   const handleSaveData = () => {
       const now = new Date().toLocaleString('id-ID');
       const updatedDocs = dutyDocuments.map(doc => 
           doc.id === activeDutyDocId ? { ...doc, schedule: schedule! } : doc
       );
-
       const dataToSave = {
           schedule,
           dutyDocuments: updatedDocs, 
@@ -251,7 +236,6 @@ const App: React.FC = () => {
       alert('Data berhasil disimpan ke browser!');
   };
 
-  // Switch Active Document
   const handleSwitchDoc = (newId: string) => {
       const newDoc = dutyDocuments.find(d => d.id === newId);
       if (!newDoc) return;
@@ -259,29 +243,18 @@ const App: React.FC = () => {
       setSchedule(newDoc.schedule);
   };
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
       const handleClickOutside = (event: MouseEvent) => {
-          if (multiSelectRef.current && !multiSelectRef.current.contains(event.target as Node)) {
-              setIsMultiSelectOpen(false);
-          }
-          if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
-            setIsExportDropdownOpen(false);
-          }
-          if (scheduleTabRef.current && !scheduleTabRef.current.contains(event.target as Node)) {
-            setIsScheduleTabOpen(false);
-          }
-          if (skTabRef.current && !skTabRef.current.contains(event.target as Node)) {
-            setIsSkTabOpen(false);
-          }
+          const target = event.target as Node;
+          if (exportRef.current && !exportRef.current.contains(target)) setIsExportDropdownOpen(false);
+          if (scheduleTabRef.current && !scheduleTabRef.current.contains(target)) setIsScheduleTabOpen(false);
+          if (skTabRef.current && !skTabRef.current.contains(target)) setIsSkTabOpen(false);
+          if (settingsTabRef.current && !settingsTabRef.current.contains(target)) setIsSettingsTabOpen(false);
       };
       document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-          document.removeEventListener('mousedown', handleClickOutside);
-      };
+      return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Stats for code palette
   const getCodeStats = (tId: number, sCode: string) => {
       if (!schedule) return { total: 0, placed: 0 };
       let total = 0;
@@ -312,7 +285,7 @@ const App: React.FC = () => {
   };
 
   const handleClearSchedule = () => {
-      if (window.confirm('Apakah Anda yakin ingin membersihkan seluruh jadwal? Semua isian jadwal akan DIHAPUS dan disimpan.')) {
+      if (window.confirm('Apakah Anda yakin ingin membersihkan seluruh jadwal?')) {
           const emptySchedule = createEmptySchedule();
           setSchedule(emptySchedule);
           const updatedDocs = dutyDocuments.map(doc => doc.id === activeDutyDocId ? { ...doc, schedule: emptySchedule } : doc);
@@ -335,10 +308,8 @@ const App: React.FC = () => {
   };
 
   const scheduleTabs: Tab[] = ['SCHEDULE', 'PER_CLASS_TEACHER', 'EDIT_MANUAL', 'OFF_CODES', 'JP_DIST'];
-  const isScheduleTabActive = scheduleTabs.includes(activeTab);
-
   const skTabs: Tab[] = ['SK_DECISION', 'SK_ADDITIONAL_TASK', 'SK_TAS_TASK', 'SK_WALAS', 'SK_EKSKUL', 'SK_MGMP'];
-  const isSkTabActive = skTabs.includes(activeTab);
+  const settingsTabs: Tab[] = ['SETTINGS', 'DUTIES'];
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -386,7 +357,7 @@ const App: React.FC = () => {
         <div className="container mx-auto">
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-1">
                 <div className="relative" ref={scheduleTabRef}>
-                    <button onClick={() => setIsScheduleTabOpen(!isScheduleTabOpen)} className={`px-6 py-3 text-sm font-bold border-b-2 whitespace-nowrap flex items-center gap-2 ${isScheduleTabActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800'}`}>
+                    <button onClick={() => setIsScheduleTabOpen(!isScheduleTabOpen)} className={`px-6 py-3 text-sm font-bold border-b-2 whitespace-nowrap flex items-center gap-2 ${scheduleTabs.includes(activeTab) ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800'}`}>
                         Jadwal Pelajaran
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" className={`transition-transform ${isScheduleTabOpen ? 'rotate-180' : ''}`}><path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
                     </button>
@@ -402,10 +373,8 @@ const App: React.FC = () => {
                     )}
                 </div>
 
-                <button onClick={() => setActiveTab('DUTIES')} className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${activeTab === 'DUTIES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Pembagian Tugas</button>
-
                 <div className="relative" ref={skTabRef}>
-                    <button onClick={() => setIsSkTabOpen(!isSkTabOpen)} className={`px-6 py-3 text-sm font-bold border-b-2 whitespace-nowrap flex items-center gap-2 ${isSkTabActive ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800'}`}>
+                    <button onClick={() => setIsSkTabOpen(!isSkTabOpen)} className={`px-6 py-3 text-sm font-bold border-b-2 whitespace-nowrap flex items-center gap-2 ${skTabs.includes(activeTab) ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600 hover:text-gray-800'}`}>
                         SK PBM
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" className={`transition-transform ${isSkTabOpen ? 'rotate-180' : ''}`}><path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
                     </button>
@@ -421,7 +390,18 @@ const App: React.FC = () => {
                     )}
                 </div>
 
-                <button onClick={() => setActiveTab('SETTINGS')} className={`px-6 py-3 text-sm font-medium border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === 'SETTINGS' ? 'border-gray-600 text-gray-800 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>Pengaturan</button>
+                <div className="relative" ref={settingsTabRef}>
+                    <button onClick={() => setIsSettingsTabOpen(!isSettingsTabOpen)} className={`px-6 py-3 text-sm font-bold border-b-2 whitespace-nowrap flex items-center gap-2 ${settingsTabs.includes(activeTab) ? 'border-gray-600 text-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                        Pengaturan
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" className={`transition-transform ${isSettingsTabOpen ? 'rotate-180' : ''}`}><path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>
+                    </button>
+                    {isSettingsTabOpen && (
+                        <div className="absolute top-full left-0 bg-white border border-gray-200 shadow-xl rounded-b-lg w-56 z-50 flex flex-col">
+                            <button onClick={() => { setActiveTab('SETTINGS'); setIsSettingsTabOpen(false); }} className={`text-left px-4 py-3 hover:bg-gray-50 text-sm ${activeTab === 'SETTINGS' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}>Pengaturan Umum</button>
+                            <button onClick={() => { setActiveTab('DUTIES'); setIsSettingsTabOpen(false); }} className={`text-left px-4 py-3 hover:bg-gray-50 text-sm ${activeTab === 'DUTIES' ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-700'}`}>Data Pembagian Tugas</button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
       </div>
@@ -450,7 +430,7 @@ const App: React.FC = () => {
         {activeTab === 'EDIT_MANUAL' && schedule && <ManualEditTable schedule={schedule} setSchedule={setSchedule} teachers={teachers} filterType={filterType} filterValue={filterValue} jpSplitSettings={jpSplitSettings} documents={dutyDocuments} activeDocId={activeDutyDocId} setActiveDocId={handleSwitchDoc} />}
         {activeTab === 'DUTIES' && <TeacherDutyTable teachers={teachers} setTeachers={setTeachers} schedule={null} mode="static" documents={dutyDocuments} setDocuments={setDutyDocuments} activeDocId={activeDutyDocId} setActiveDocId={(id) => handleSwitchDoc(id as string)} />}
         {activeTab === 'SK_DECISION' && <DecisionLetter documents={decisionDocuments} setDocuments={setDecisionDocuments} schoolConfig={schoolConfig} />}
-        {activeTab === 'SK_ADDITIONAL_TASK' && <AdditionalTaskLetter documents={skDocuments} setDocuments={setSkDocuments} teachers={teachers} schoolConfig={schoolConfig} />}
+        {activeTab === 'SK_ADDITIONAL_TASK' && <AdditionalTaskLetter documents={skDocuments} setDocuments={setSkDocuments} teachers={teachers} schoolConfig={schoolConfig} dutyDocuments={dutyDocuments} activeDutyDocId={activeDutyDocId} onSwitchDutyDoc={handleSwitchDoc} />}
         {activeTab === 'SK_WALAS' && <WalasLetter documents={walasDocuments} setDocuments={setWalasDocuments} teachers={teachers} schoolConfig={schoolConfig} dutyDocuments={dutyDocuments} activeDutyDocId={activeDutyDocId} onSwitchDutyDoc={handleSwitchDoc} />}
         {activeTab === 'SK_EKSKUL' && <EkskulLetter documents={ekskulDocuments} setDocuments={setEkskulDocuments} teachers={teachers} schoolConfig={schoolConfig} dutyDocuments={dutyDocuments} activeDutyDocId={activeDutyDocId} onSwitchDutyDoc={handleSwitchDoc} />}
         {activeTab === 'SK_MGMP' && <MGMPLetter documents={mgmpDocuments} setDocuments={setMgmpDocuments} teachers={teachers} schoolConfig={schoolConfig} dutyDocuments={dutyDocuments} activeDutyDocId={activeDutyDocId} onSwitchDutyDoc={handleSwitchDoc} />}
