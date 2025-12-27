@@ -142,6 +142,38 @@ const App: React.FC = () => {
                 jabatan: 'PTT',
                 tasks: '1. Koordinator Tenaga Administrasi Sekolah\n2. Pelaksana Urusan Administrasi Kepegawaian\n3. Proktor Kegiatan Evaluasi dan Penilaian\n4. Operator PPDB\n5. Operator Dapodik\n6 Urusan Mutasi Peserta Didik',
                 details: '1.1. Struktur Organisasi Sekolah\n2.1. File Guru dan Karyawan\n2.2. Papan Data ketenagaan\n3.1. Pelaksana Asesmen Kompetensi Minimum\n3.2. Kegiatan Evaluasi dan Penilaian lainnya\n4. Melaksanakan kegiatan PPDB (Online) mulai dari awal\n5.2. Pelaksana Dapodik\n5.2. Pelaksana E Rapor\n5.3. Pembuat Nomor Induk Siswa\n6.1. Penyelesaian Mutasi Siswa\n6.2. Buku Klaper'
+            },
+            {
+                id: '2',
+                name: "Masruroh",
+                nip: '-',
+                jabatan: 'PTT',
+                tasks: '1. Bendahara Sekolah\n2. Pelaksana Urusan Keuangan\n3. Pelaksana Urusan Administrasi Inventaris',
+                details: '1.1. Bendahara Dana Hibah BOS Kabupaten\n1.2. Bendahara Dana Hibah BOS Nasional\n2.1. Buku Kas Umum\n2.2. Buku Pembantu Bank\n2.3. Buku Pembantu Pajak\n3.1. Buku Induk Barang Inventaris\n3.2. Buku Golongan Barang Inventaris'
+            },
+            {
+                id: '3',
+                name: "M. Syaifuddin",
+                nip: '-',
+                jabatan: 'PTT',
+                tasks: '1. Pelaksana Urusan Administrasi Persuratan dan Pengarsipan\n2. Pelaksana Urusan Administrasi Kesiswaan',
+                details: '1.1. Buku Agenda Surat Masuk dan Keluar\n1.2. Buku Ekspedisi\n1.3. File Arsip Sekolah\n2.1. Buku Induk Siswa\n2.2. Administrasi PPDB\n2.3. Leger Siswa'
+            },
+            {
+                id: '4',
+                name: "Sulis Setyowati",
+                nip: '-',
+                jabatan: 'PTT',
+                tasks: '1. Pelaksana Urusan Kebersihan Sekolah\n2. Pengelola Taman dan Keindahan Lingkungan',
+                details: '1.1. Kebersihan Ruang Guru dan Kantor\n1.2. Kebersihan Lingkungan Sekolah\n1.3. Layanan Minum Guru dan Karyawan\n2.1. Penataan Taman Sekolah\n2.2. Perawatan Tanaman'
+            },
+            {
+                id: '5',
+                name: "M. Alaikal Fajar",
+                nip: '-',
+                jabatan: 'PTT',
+                tasks: '1. Pelaksana Urusan Keamanan Sekolah\n2. Penjaga Malam',
+                details: '1.1. Keamanan dan Ketertiban Lingkungan Sekolah\n1.2. Pemeliharaan dan Perbaikan Fasilitas Ringan\n2.1. Pengawasan Aset Sekolah pada Malam Hari'
             }
           ]
       }

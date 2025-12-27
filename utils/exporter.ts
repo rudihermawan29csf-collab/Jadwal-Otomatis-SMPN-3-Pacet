@@ -2,7 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx-js-style';
-import { WeeklySchedule, CLASSES, Teacher, ClassName, AdditionalTask, WalasEntry, EkskulEntry, MGMPEntry, ScheduleCell, SchoolConfig } from '../types';
+import { WeeklySchedule, CLASSES, Teacher, ClassName, AdditionalTask, WalasEntry, EkskulEntry, MGMPEntry, ScheduleCell, SchoolConfig, TASEntry } from '../types';
 import { TIME_STRUCTURE } from '../data';
 
 // --- HELPERS ---
@@ -115,13 +115,13 @@ export const exportAdditionalTaskPDF = (tasks: AdditionalTask[], size: 'A4' | 'F
     doc.save(`SK_Lampiran_2_Tugas_Tambahan_${size}.pdf`);
 };
 
-export const exportTASAdditionalTaskPDF = (size: 'A4' | 'F4', config: SchoolConfig) => {
-    const tasData = [{ no: '1', name: "Imam Safi'i", nip: '-', jabatan: 'PTT', tasks: '1. Koordinator Tenaga Administrasi Sekolah\n2. Pelaksana Urusan Administrasi Kepegawaian\n3. Proktor Kegiatan Evaluasi dan Penilaian\n4. Operator PPDB\n5. Operator Dapodik\n6 Urusan Mutasi Peserta Didik', details: '1.1. Struktur Organisasi Sekolah\n2.1. File Guru dan Karyawan\n2.2. Papan Data ketenagaan\n3.1. Pelaksana Asesmen Kompetensi Minimum\n3.2. Kegiatan Evaluasi dan Penilaian lainnya\n4. Melaksanakan kegiatan PPDB (Online) mulai dari awal\n5.2. Pelaksana Dapodik\n5.2. Pelaksana E Rapor\n5.3. Pembuat Nomor Induk Siswa\n6.1. Penyelesaian Mutasi Siswa\n6.2. Buku Klaper' }];
+export const exportTASAdditionalTaskPDF = (entries: TASEntry[], size: 'A4' | 'F4', fullSkNumber: string, formattedDate: string, year: string, config: SchoolConfig) => {
     const doc = new jsPDF({ orientation: 'portrait', format: size === 'F4' ? PAGE_SIZE_F4 : PAGE_SIZE_A4, unit: 'mm' });
-    const pageWidth = doc.internal.pageSize.getWidth(); doc.setFontSize(8); doc.text("Lampiran 2a. : Keputusan Kepala SMPN 3 Pacet", pageWidth - 70, 15); doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text("PEMBAGIAN TUGAS TENAGA ADMINISTRASI SEKOLAH", pageWidth / 2, 35, { align: 'center' });
-    autoTable(doc, { startY: 55, head: [['No', 'Nama / NIP.', 'Jabatan', 'Tugas Tambahan', 'Rincian Tugas']], body: tasData.map(t => [t.no, { content: `${t.name}\nNIP. ${t.nip}` }, t.jabatan, t.tasks, t.details]), theme: 'grid', headStyles: { fillColor: [240, 240, 240], textColor: 0 }, bodyStyles: { fontSize: 8, valign: 'top' } });
+    const pageWidth = doc.internal.pageSize.getWidth(); doc.setFontSize(8); doc.text("Lampiran 2a. : Keputusan Kepala SMPN 3 Pacet", pageWidth - 70, 15); doc.text(`Nomor        : ${fullSkNumber}`, pageWidth - 70, 20); doc.text(`Tanggal      : ${formattedDate}`, pageWidth - 70, 25);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(["PEMBAGIAN TUGAS TENAGA ADMINISTRASI SEKOLAH", "SMPN 3 PACET", `TAHUN PELAJARAN ${year}`], pageWidth / 2, 35, { align: 'center' });
+    autoTable(doc, { startY: 55, head: [['No', 'Nama / NIP.', 'Jabatan', 'Tugas Tambahan', 'Rincian Tugas']], body: entries.map((t, idx) => [`${idx + 1}`, { content: `${t.name}\nNIP. ${t.nip}` }, t.jabatan, t.tasks, t.details]), theme: 'grid', headStyles: { fillColor: [240, 240, 240], textColor: 0 }, bodyStyles: { fontSize: 8, valign: 'top' }, columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 1: { cellWidth: 40 }, 2: { cellWidth: 20, halign: 'center' }, 3: { cellWidth: 60 }, 4: { cellWidth: 'auto' } } });
     // @ts-ignore
-    let fY = doc.lastAutoTable.finalY + 10; doc.text(config.principalName, pageWidth - 80, fY + 25);
+    let fY = doc.lastAutoTable.finalY + 15; const sX = pageWidth - 80; doc.setFontSize(10); doc.text("Kepala SMPN 3 Pacet", sX, fY); fY += 25; doc.setFont('helvetica', 'bold'); doc.text(config.principalName, sX, fY); doc.setFont('helvetica', 'normal'); doc.text(`NIP. ${config.principalNip}`, sX, fY + 5);
     doc.save(`SK_Lampiran_2a_TAS_${size}.pdf`);
 };
 

@@ -100,6 +100,10 @@ export const TASAdditionalTaskLetter: React.FC<Props> = ({ documents, setDocumen
     const formattedDate = dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const fullSkNumber = `800/${activeDoc.skNumberCode}/416-101.68/${yearFromDate}`;
 
+    const handleDownload = (size: 'A4' | 'F4') => {
+        exportTASAdditionalTaskPDF(activeDoc.entries, size, fullSkNumber, formattedDate, activeDoc.academicYear, schoolConfig);
+    };
+
     return (
         <div className="flex flex-col items-center">
             {/* Toolbar Document Management */}
@@ -235,8 +239,8 @@ export const TASAdditionalTaskLetter: React.FC<Props> = ({ documents, setDocumen
 
             {/* Export Buttons */}
             <div className="no-print flex gap-4 mb-12">
-                <button onClick={() => exportTASAdditionalTaskPDF('A4', schoolConfig)} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105">PDF A4</button>
-                <button onClick={() => exportTASAdditionalTaskPDF('F4', schoolConfig)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105">PDF F4</button>
+                <button onClick={() => handleDownload('A4')} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105">PDF A4</button>
+                <button onClick={() => handleDownload('F4')} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-lg font-bold flex items-center gap-2 transition-all transform hover:scale-105">PDF F4</button>
             </div>
         </div>
     );
